@@ -14,7 +14,15 @@ fn main() {
             .expect("Time went backwards").as_micros()
     );
 
-    local_node.register();
+    match local_node {
+        Ok(_) => {
+            local_node.unwrap().register();
+        },
+        Err(e) => {
+            println!("{}", e);
+            std::process::exit(1);
+        },
+    }
 
     networking::start_http_server();
 }
