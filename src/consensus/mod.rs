@@ -1,5 +1,7 @@
 use regex::Regex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{time::{SystemTime, UNIX_EPOCH}};
+
+pub static mut NODE_LIST: Vec<Node> = vec![];
 
 pub struct Node {
     pub ip_address: String,
@@ -17,7 +19,7 @@ impl Node {
                 .unwrap()
                 .is_match(&ip_address) && 
                 Regex::new(r"^0x[a-fA-F0-9]{40}$").unwrap().is_match(&blockchain_address) &&
-                registration_timestamp < now &&
+                registration_timestamp <= now &&
                 registration_timestamp > now - 10000
             {
                 return Ok(
@@ -33,8 +35,16 @@ impl Node {
 
     }
 
-    pub fn register(&self) {
+    pub unsafe fn register(self) -> bool {
         // todo: add Node to some array, which holds all known Nodes in the
         // network
+        let ip_already_in_use = NODE_LIST.iter().any(|n| n.ip_address == self.ip_address);
+        let blockchain_address_already_in_use = NODE_LIST.iter().any(|n| n.blockchain_address == self.blockchain_address);
+
+        if !ip_already_in_use && !blockchain_address_already_in_use {
+            NODE_LIST.push(self);
+        }
+
+        return !ip_already_in_use && !blockchain_address_already_in_use;
     }
 }
