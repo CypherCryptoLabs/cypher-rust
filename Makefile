@@ -1,3 +1,4 @@
+include .env
 TARGET = cypher-rust
 
 .PHONY: all clean run
@@ -11,4 +12,4 @@ clean:
 	cargo clean
 
 run: $(TARGET)
-	cargo run
+	env $(shell cat .env | xargs) cargo run
