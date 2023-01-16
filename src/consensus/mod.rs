@@ -36,8 +36,6 @@ impl Node {
     }
 
     pub unsafe fn register(self) -> bool {
-        // todo: add Node to some array, which holds all known Nodes in the
-        // network
         let ip_already_in_use = NODE_LIST.iter().any(|n| n.ip_address == self.ip_address);
         let blockchain_address_already_in_use = NODE_LIST.iter().any(|n| n.blockchain_address == self.blockchain_address);
 
