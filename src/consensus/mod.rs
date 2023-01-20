@@ -1,9 +1,15 @@
+extern crate serde;
+extern crate serde_json;
+
 use regex::Regex;
-use serde::{Serialize, ser::SerializeStruct};
+use serde::{Serialize, Deserialize, ser::SerializeStruct};
+//use serde::Serialize;
 use std::{time::{SystemTime, UNIX_EPOCH}};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
 
+
+#[derive(Serialize, Deserialize)]
 pub struct Node {
     pub ip_address: String,
     pub blockchain_address: String,
@@ -48,16 +54,16 @@ impl Node {
     }
 }
 
-impl Serialize for Node {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("Node", 2)?;
-        state.serialize_field("ip_address", &self.ip_address)?;
-        state.serialize_field("blockchain_address", &self.blockchain_address)?;
-        state.serialize_field("registration_timestamp", &self.registration_timestamp)?;
-        // other fields
-        state.end()
-    }
-}
+// impl Serialize for Node {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         let mut state = serializer.serialize_struct("Node", 2)?;
+//         state.serialize_field("ip_address", &self.ip_address)?;
+//         state.serialize_field("blockchain_address", &self.blockchain_address)?;
+//         state.serialize_field("registration_timestamp", &self.registration_timestamp)?;
+//         // other fields
+//         state.end()
+//     }
+// }

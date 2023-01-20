@@ -6,6 +6,7 @@ extern crate serde_json;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
+use serde::ser::Error;
 use serde_json::json;
 use std::convert::Infallible;
 use std::pin::Pin;
@@ -104,16 +105,41 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
 
         match data {
             Ok(_) => {
-                println!("{:#?}", data);
-                let body = data.unwrap();
-                response = Response::builder()
-                    .header(CONTENT_LENGTH, body.len() as u64)
-                    .header(CONTENT_TYPE, "text/plain")
-                    .body(Body::from(body))
-                    .expect("Failed to construct the response")
+                let request_body_str = data.unwrap();
+                let request_body_json:Result<super::super::consensus::Node, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+
+                match request_body_json {
+                    Ok(_) => {
+                        let new_node = request_body_json.unwrap();
+                        unsafe { 
+                            let register_success = new_node.register();
+
+                            let body: String = serde_json::to_string(&serde_json::json!({
+                                "status": register_success,
+                            })).unwrap();
+
+                            response = Response::builder()
+                                .header(CONTENT_LENGTH, body.len() as u64)
+                                .header(CONTENT_TYPE, "text/plain")
+                                .body(Body::from(body))
+                                .expect("Failed to construct the response")
+                        }
+                    }
+
+                    Err(_) => {
+                        let body = "400 - Malformed Request";
+                        response = Response::builder()
+                                .header(CONTENT_LENGTH, body.len() as u64)
+                                .header(CONTENT_TYPE, "text/plain")
+                                .body(Body::from(body))
+                                .expect("Failed to construct the response");
+
+                        *response.status_mut() = StatusCode::BAD_REQUEST;
+                    }
+                }
             }
             Err(_) => {
-                let body = "404 - Route not supported by Node";
+                let body = "400 - Malformed Request";
                 response = Response::builder()
                         .header(CONTENT_LENGTH, body.len() as u64)
                         .header(CONTENT_TYPE, "text/plain")
