@@ -3,15 +3,12 @@ extern crate hyper_routing;
 extern crate serde;
 extern crate serde_json;
 
-use std::convert::Infallible;
-use std::pin::Pin;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
 use serde_json::json;
-
-impl Copy for Request<Body> {}
-trait Copy {}
+use std::convert::Infallible;
+use std::pin::Pin;
 
 struct Route<'a> {
     path: &'a str,
@@ -100,11 +97,6 @@ fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>>
 
 fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
-        // let req_clone = req.to_owned().clone();
-        // let request_body_bytes = req_clone.into_body().filter_map(|b| async {b.ok()}).collect::<Vec<hyper::body::Bytes>>().await;
-        // let request_body_bytes_vec: Vec<u8> = request_body_bytes.into_iter().flat_map(|b| b.to_vec()).collect();
-        // let data = String::from_utf8(request_body_bytes_vec);
-
         let body = req.into_body();
         let bytes = body::to_bytes(body).await.unwrap();
         let data = String::from_utf8((&*bytes).to_vec());
