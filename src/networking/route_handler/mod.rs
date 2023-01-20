@@ -39,7 +39,6 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     for route in api_routes.iter() {
         if request_path == route.path &&
             request_method == route.method {
-                //let request_static= Box::leak(Box::new(req));
                 response = Some((route.handler)(Request::new(req.into_body())).await);
                 break;
             }
