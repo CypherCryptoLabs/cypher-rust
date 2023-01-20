@@ -52,17 +52,3 @@ impl Node {
         return !ip_already_in_use && !blockchain_address_already_in_use;
     }
 }
-
-// impl Serialize for Node {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         let mut state = serializer.serialize_struct("Node", 2)?;
-//         state.serialize_field("ip_address", &self.ip_address)?;
-//         state.serialize_field("blockchain_address", &self.blockchain_address)?;
-//         state.serialize_field("registration_timestamp", &self.registration_timestamp)?;
-//         // other fields
-//         state.end()
-//     }
-// }
