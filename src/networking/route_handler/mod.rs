@@ -6,7 +6,6 @@ extern crate serde_json;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
-use serde::ser::Error;
 use serde_json::json;
 use std::convert::Infallible;
 use std::pin::Pin;
