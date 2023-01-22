@@ -7,7 +7,7 @@ use serde::{Serialize, Deserialize};
 use std::{time::{SystemTime, UNIX_EPOCH}, str::FromStr};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
-
+pub static LOCAL_BLOCKCHAIN_ADDRESS: &str = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
@@ -20,6 +20,7 @@ pub struct Node {
 pub struct NodeInfo {
     node_name: String,
     node_version: String,
+    blockchain_address: String,
     unix_time: u64
 }
 
@@ -74,12 +75,22 @@ impl Node {
         match response {
             Ok(_) => {
                 let body_string = String::from_utf8((hyper::body::to_bytes(response.unwrap()).await.unwrap()).to_vec()).unwrap();
-                let body_json:NodeInfo = serde_json::from_str(body_string.as_str()).unwrap();
-                
-                if body_json.unix_time <= now && body_json.unix_time > now - 10000 {
-                    true
-                } else {
-                    false
+                let body_json_result: Result<NodeInfo, serde_json::Error> = serde_json::from_str(body_string.as_str());
+
+                match body_json_result {
+                    Ok(_) => {
+                        let body_json = body_json_result.unwrap();
+                        if body_json.unix_time <= now && body_json.unix_time > now - 10000 
+                            && body_json.blockchain_address == self.blockchain_address{
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Err(_) => {
+                        println!("{:#?}", body_json_result.err());
+                        false
+                    }
                 }
             }
             Err(_) => {

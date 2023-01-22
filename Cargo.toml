@@ -1,6 +1,6 @@
 [package]
 name = "cypher-rust"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["michel.barnich@cyphercrypto.io"]
 edition = "2021"
 
