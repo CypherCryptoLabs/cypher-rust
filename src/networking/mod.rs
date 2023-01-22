@@ -5,8 +5,8 @@ extern crate serde_json;
 
 mod route_handler;
 
-use std::{convert::Infallible};
 use hyper::{service::{ make_service_fn, service_fn}, Server};
+use std::{convert::Infallible};
 use tokio;
 
 const _NODE_VERSION: &str = env!("CARGO_PKG_VERSION");

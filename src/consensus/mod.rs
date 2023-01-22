@@ -1,18 +1,26 @@
 extern crate serde;
 extern crate serde_json;
 
+use hyper::{Client, Uri};
 use regex::Regex;
 use serde::{Serialize, Deserialize};
-use std::{time::{SystemTime, UNIX_EPOCH}};
+use std::{time::{SystemTime, UNIX_EPOCH}, str::FromStr};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
-    pub ip_address: String,
-    pub blockchain_address: String,
-    pub registration_timestamp: u64
+    ip_address: String,
+    blockchain_address: String,
+    registration_timestamp: u64
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct NodeInfo {
+    node_name: String,
+    node_version: String,
+    unix_time: u64
 }
 
 impl Node {
@@ -41,14 +49,45 @@ impl Node {
 
     }
 
-    pub unsafe fn register(self) -> bool {
+    pub async unsafe fn register(&self) -> bool {
+        if !self.to_owned().is_reachable().await {
+            return false;
+        }
+
         let ip_already_in_use = NODE_LIST.iter().any(|n| n.ip_address == self.ip_address);
         let blockchain_address_already_in_use = NODE_LIST.iter().any(|n| n.blockchain_address == self.blockchain_address);
 
         if !ip_already_in_use && !blockchain_address_already_in_use {
-            NODE_LIST.push(self);
+            NODE_LIST.push(self.to_owned());
         }
 
         return !ip_already_in_use && !blockchain_address_already_in_use;
+    }
+
+    pub async fn is_reachable(self) -> bool {
+        let client = Client::new();
+        let node_uri = Uri::from_str(&("http://".to_owned() + &self.ip_address + ":1234/")).unwrap();
+        let response = client.get(node_uri).await;
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)
+            .expect("Time went backwards").as_micros() as u64;
+
+        match response {
+            Ok(_) => {
+                let body_string = String::from_utf8((hyper::body::to_bytes(response.unwrap()).await.unwrap()).to_vec()).unwrap();
+                let body_json:NodeInfo = serde_json::from_str(body_string.as_str()).unwrap();
+                
+                if body_json.unix_time <= now && body_json.unix_time > now - 10000 {
+                    true
+                } else {
+                    false
+                }
+            }
+            Err(_) => {
+                let err = response.err().unwrap();
+                println!("{:#?}", err);
+                false
+            }
+        }
+
     }
 }

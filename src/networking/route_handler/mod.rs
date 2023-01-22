@@ -9,6 +9,7 @@ use hyper::{Request, Response, Body, StatusCode, body};
 use serde_json::json;
 use std::convert::Infallible;
 use std::pin::Pin;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct Route<'a> {
     path: &'a str,
@@ -31,7 +32,7 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let post_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network/node";
 
     let api_routes: Vec<Route> = vec![
-        Route {path: &"/version", method: &"GET", handler: get_version},
+        Route {path: &"/", method: &"GET", handler: get_info},
         Route {path: &get_nodes_path, method: &"GET", handler: get_nodes},
         Route {path: &post_nodes_path, method: &"POST", handler: post_node},
     ];
@@ -61,11 +62,13 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 }
 
-fn get_version(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async {
         let body: String = serde_json::to_string(&serde_json::json!({
             "node_name": _NODE_NAME,
-            "node_version": _NODE_VERSION
+            "node_version": _NODE_VERSION,
+            "unix_time": SystemTime::now().duration_since(UNIX_EPOCH)
+            .expect("Time went backwards").as_micros() as u64
         })).unwrap();
 
         let response = Response::builder()
@@ -114,7 +117,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
                             let register_success = new_node.register();
 
                             let body: String = serde_json::to_string(&serde_json::json!({
-                                "status": register_success,
+                                "status": register_success.await,
                             })).unwrap();
 
                             response = Response::builder()
