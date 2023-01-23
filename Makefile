@@ -18,7 +18,8 @@ docker:
 	docker build -t $(TARGET) .
 
 run-container-%:
-	docker run -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* $(TARGET)
+	$(eval SEED_IP := $(shell echo $* - 1 | bc))
+	docker run -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.$(SEED_IP) $(TARGET)
 
 rm-container-%:
 	-docker container rm $(TARGET)-$*
@@ -26,13 +27,13 @@ rm-container-%:
 stop-container-%:
 	-docker container stop $(TARGET)-$*
 
-stop-local-testnet:
+stop-testnet:
 	$(MAKE) stop-container-1
 	$(MAKE) stop-container-2
 	$(MAKE) stop-container-3
 	$(MAKE) stop-container-4
 
-run-local-testnet: 
+testnet: 
 	$(MAKE) rm-container-1
 	$(MAKE) rm-container-2
 	$(MAKE) rm-container-3

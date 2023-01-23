@@ -6,6 +6,7 @@ use std::env;
 
 lazy_static! {
     pub static ref IP_ADDRESS: String = env::var("CYPHER_EXTERNAL_IP").unwrap_or_default();
+    pub static ref SEED_IP_ADDRESS: String = env::var("CYPHER_SEED_IP").unwrap_or_default();
 }
 
 pub fn load() {
@@ -19,6 +20,23 @@ pub fn load() {
                 .unwrap()
                 .is_match(&IP_ADDRESS)
             {
+                println!("'CYPHER_EXTERNAL_IP' is not set correctly!");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    match SEED_IP_ADDRESS.as_str() {
+        "" => {
+            println!("'CYPHER_SEED_IP' not set!");
+            std::process::exit(1);
+        },
+        &_ => {
+            if !Regex::new(r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$")
+                .unwrap()
+                .is_match(&SEED_IP_ADDRESS)
+            {
+                println!("'CYPHER_SEED_IP' is not set correctly!");
                 std::process::exit(1);
             }
         }
