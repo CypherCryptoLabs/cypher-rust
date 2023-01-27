@@ -18,8 +18,10 @@ docker:
 	docker build -t $(TARGET) .
 
 run-container-%:
+	if ! [ -d ./testnet_volumes/$(TARGET)-$* ]; then mkdir ./testnet_volumes/$(TARGET)-$*; fi
+
 	$(eval SEED_IP := $(shell echo $* - 1 | bc))
-	docker run -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.$(SEED_IP) $(TARGET)
+	docker run -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.$(SEED_IP) $(TARGET)
 
 rm-container-%:
 	-docker container rm $(TARGET)-$*
@@ -34,6 +36,8 @@ stop-testnet:
 	$(MAKE) stop-container-4
 
 testnet: 
+	if ! [ -d "./testnet_volumes" ]; then mkdir "./testnet_volumes"; fi
+
 	$(MAKE) rm-container-1
 	$(MAKE) rm-container-2
 	$(MAKE) rm-container-3
