@@ -4,6 +4,7 @@ extern crate serde;
 extern crate serde_json;
 
 mod route_handler;
+pub mod node;
 
 use hyper::{service::{ make_service_fn, service_fn}, Server};
 use std::{convert::Infallible};

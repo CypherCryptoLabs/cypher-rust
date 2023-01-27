@@ -1,5 +1,4 @@
 mod config;
-mod consensus;
 mod networking;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -7,8 +6,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 async fn main() {
     config::load();
     
-    let local_node = consensus::Node::new(config::IP_ADDRESS.to_string(), 
-        consensus::LOCAL_BLOCKCHAIN_ADDRESS.to_string(), //dummy
+    let local_node = networking::node::Node::new(config::IP_ADDRESS.to_string(), 
+    networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string(), //dummy
         SystemTime::now().duration_since(UNIX_EPOCH)
             .expect("Time went backwards").as_micros() as u64
     );

@@ -69,7 +69,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
             "node_version": _NODE_VERSION,
             "unix_time": SystemTime::now().duration_since(UNIX_EPOCH)
             .expect("Time went backwards").as_micros() as u64,
-            "blockchain_address": super::super::consensus::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
+            "blockchain_address": super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
         })).unwrap();
 
         let response = Response::builder()
@@ -85,7 +85,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
 fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
         unsafe {
-            let body: String = serde_json::to_string(&json!(&super::super::consensus::NODE_LIST)).unwrap();
+            let body: String = serde_json::to_string(&json!(&super::node::NODE_LIST)).unwrap();
 
             let response = Response::builder()
                 .header(CONTENT_LENGTH, body.len() as u64)
@@ -109,7 +109,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         match data {
             Ok(_) => {
                 let request_body_str = data.unwrap();
-                let request_body_json:Result<super::super::consensus::Node, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+                let request_body_json:Result<super::node::Node, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
 
                 match request_body_json {
                     Ok(_) => {
