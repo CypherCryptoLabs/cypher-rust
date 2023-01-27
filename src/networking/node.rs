@@ -66,36 +66,57 @@ impl Node {
     }
 
     pub async fn is_reachable(self) -> bool {
-        let client = Client::new();
+        let client:Client<hyper::client::HttpConnector> = Client::builder()
+            .pool_idle_timeout(std::time::Duration::from_secs(3))
+            .http2_only(true)
+            .build_http();
         let node_uri = Uri::from_str(&("http://".to_owned() + &self.ip_address + ":1234/")).unwrap();
-        let response = client.get(node_uri).await;
-        let now = SystemTime::now().duration_since(UNIX_EPOCH)
-            .expect("Time went backwards").as_micros() as u64;
+        let response = client.get(node_uri);
 
-        match response {
+        let response_timeout = tokio::time::timeout(std::time::Duration::from_millis(3000), response).await;
+        let response_timeout_unwrapped: Result<hyper::Response<hyper::Body>, hyper::Error>;
+
+        match response_timeout {
             Ok(_) => {
-                let body_string = String::from_utf8((hyper::body::to_bytes(response.unwrap()).await.unwrap()).to_vec()).unwrap();
-                let body_json_result: Result<NodeInfo, serde_json::Error> = serde_json::from_str(body_string.as_str());
+                response_timeout_unwrapped = response_timeout.unwrap()
+            }
+            Err(_) => {
+                let err = response_timeout.err();
+                println!("Timeout occured when checking a Nodes reachability: {:#?}", err);
+                return false;
+            }
+        }
 
-                match body_json_result {
-                    Ok(_) => {
-                        let body_json = body_json_result.unwrap();
-                        if body_json.unix_time <= now && body_json.unix_time > now - 10000 
-                            && body_json.blockchain_address == self.blockchain_address{
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Err(_) => {
-                        println!("{:#?}", body_json_result.err());
-                        false
-                    }
+        let body_string : String;
+        let body_json_result: Result<NodeInfo, serde_json::Error>;
+
+        match response_timeout_unwrapped {
+            Ok(_) => {
+                body_string = String::from_utf8((hyper::body::to_bytes(response_timeout_unwrapped.unwrap()).await.unwrap()).to_vec()).unwrap();
+                body_json_result = serde_json::from_str(body_string.as_str());
+            }
+            Err(_) => {
+                let err = response_timeout_unwrapped.err();
+                println!("{:#?}", err);
+                return false;
+            }
+        }
+
+        match body_json_result {
+            Ok(_) => {
+                let body_json = body_json_result.unwrap();
+                let now = SystemTime::now().duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards").as_micros() as u64;
+                if body_json.unix_time <= now && body_json.unix_time > now - 10000 
+                    && body_json.blockchain_address == self.blockchain_address{
+                    true
+                } else {
+                    println!("{:#?}", body_string);
+                    false
                 }
             }
             Err(_) => {
-                let err = response.err().unwrap();
-                println!("{:#?}", err);
+                println!("{:#?}",  body_json_result.err());
                 false
             }
         }
