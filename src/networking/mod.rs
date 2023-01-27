@@ -10,9 +10,6 @@ use hyper::{service::{ make_service_fn, service_fn}, Server};
 use std::{convert::Infallible};
 use tokio;
 
-const _NODE_VERSION: &str = env!("CARGO_PKG_VERSION");
-const _NODE_NAME: &str = env!("CARGO_PKG_NAME");
-
 #[tokio::main]
 pub async fn start_http_server() {
 

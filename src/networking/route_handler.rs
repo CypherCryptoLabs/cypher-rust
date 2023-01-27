@@ -3,10 +3,11 @@ extern crate hyper_routing;
 extern crate serde;
 extern crate serde_json;
 
+mod response;
+
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
-use serde_json::json;
 use std::convert::Infallible;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -64,13 +65,15 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async {
-        let body: String = serde_json::to_string(&serde_json::json!({
-            "node_name": _NODE_NAME,
-            "node_version": _NODE_VERSION,
-            "unix_time": SystemTime::now().duration_since(UNIX_EPOCH)
-            .expect("Time went backwards").as_micros() as u64,
-            "blockchain_address": super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
-        })).unwrap();
+        let body: String = serde_json::to_string(
+            &response::GetInfo {
+                node_name: _NODE_NAME.to_string(),
+                node_version: _NODE_VERSION.to_string(),
+                unix_time: SystemTime::now().duration_since(UNIX_EPOCH)
+                .expect("Time went backwards").as_micros() as u64,
+                blockchain_address: super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
+            }
+        ).unwrap();
 
         let response = Response::builder()
             .header(CONTENT_LENGTH, body.len() as u64)
@@ -85,7 +88,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
 fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
         unsafe {
-            let body: String = serde_json::to_string(&json!(&super::node::NODE_LIST)).unwrap();
+            let body: String = serde_json::to_string(&response::GetNodes{nodes: super::node::NODE_LIST.clone()}).unwrap();
 
             let response = Response::builder()
                 .header(CONTENT_LENGTH, body.len() as u64)
@@ -117,9 +120,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
                         unsafe { 
                             let register_success = new_node.register();
 
-                            let body: String = serde_json::to_string(&serde_json::json!({
-                                "status": register_success.await,
-                            })).unwrap();
+                            let body: String = serde_json::to_string(&response::PostNode{status: register_success.await,}).unwrap();
 
                             response = Response::builder()
                                 .header(CONTENT_LENGTH, body.len() as u64)
