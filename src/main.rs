@@ -6,10 +6,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 async fn main() {
     config::load();
     
-    let local_node = networking::node::Node::new(config::IP_ADDRESS.to_string(), 
-    networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string(), //dummy
+    let local_node = networking::node::Node::new(
+        config::IP_ADDRESS.to_string(), 
+        networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string(), //dummy
         SystemTime::now().duration_since(UNIX_EPOCH)
             .expect("Time went backwards").as_micros() as u64
+    );
+
+    let seed_node = networking::node::Node::new(
+        config::SEED_IP_ADDRESS.to_string(),
+        config::SEED_WALLET_ADDRESS.to_string(),
+        0
     );
 
     tokio::task::spawn_blocking(|| {networking::start_http_server()});

@@ -66,41 +66,21 @@ impl Node {
     }
 
     pub async fn is_reachable(self) -> bool {
-        let client:Client<hyper::client::HttpConnector> = Client::builder()
-            .pool_idle_timeout(std::time::Duration::from_secs(3))
-            .http2_only(true)
-            .build_http();
-        let node_uri = Uri::from_str(&("http://".to_owned() + &self.ip_address + ":1234/")).unwrap();
-        let response = client.get(node_uri);
+        
+        let body_string = super::client::http_request_timeout(self.ip_address).await;
+        let body_string_result: String;
 
-        let response_timeout = tokio::time::timeout(std::time::Duration::from_millis(3000), response).await;
-        let response_timeout_unwrapped: Result<hyper::Response<hyper::Body>, hyper::Error>;
-
-        match response_timeout {
+        match body_string {
             Ok(_) => {
-                response_timeout_unwrapped = response_timeout.unwrap()
+                body_string_result = body_string.unwrap()
             }
             Err(_) => {
-                let err = response_timeout.err();
-                println!("Timeout occured when checking a Nodes reachability: {:#?}", err);
+                println!("{:#?}", body_string.err());
                 return false;
             }
         }
 
-        let body_string : String;
-        let body_json_result: Result<NodeInfo, serde_json::Error>;
-
-        match response_timeout_unwrapped {
-            Ok(_) => {
-                body_string = String::from_utf8((hyper::body::to_bytes(response_timeout_unwrapped.unwrap()).await.unwrap()).to_vec()).unwrap();
-                body_json_result = serde_json::from_str(body_string.as_str());
-            }
-            Err(_) => {
-                let err = response_timeout_unwrapped.err();
-                println!("{:#?}", err);
-                return false;
-            }
-        }
+        let body_json_result:Result<NodeInfo, serde_json::Error> = serde_json::from_str(body_string_result.as_str());
 
         match body_json_result {
             Ok(_) => {
@@ -111,7 +91,7 @@ impl Node {
                     && body_json.blockchain_address == self.blockchain_address{
                     true
                 } else {
-                    println!("{:#?}", body_string);
+                    println!("{:#?}", body_string_result);
                     false
                 }
             }
