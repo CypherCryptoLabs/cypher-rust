@@ -4,7 +4,7 @@ extern crate serde_json;
 use hyper::{Client, Uri};
 use regex::Regex;
 use serde::{Serialize, Deserialize};
-use std::{time::{SystemTime, UNIX_EPOCH, Duration}, str::FromStr};
+use std::{time::{SystemTime, UNIX_EPOCH}, str::FromStr};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
 pub static LOCAL_BLOCKCHAIN_ADDRESS: &str = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
