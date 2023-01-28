@@ -1,12 +1,24 @@
 extern crate serde;
 extern crate serde_json;
+extern crate rand;
 
 use regex::Regex;
+use std::format;
+use rand::Rng;
 use serde::{Serialize, Deserialize};
 use std::{time::{SystemTime, UNIX_EPOCH}};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
-pub static LOCAL_BLOCKCHAIN_ADDRESS: &str = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+pub static LOCAL_BLOCKCHAIN_ADDRESS: once_cell::sync::Lazy<String> = once_cell::sync::Lazy::new(|| {
+    let mut rng = rand::thread_rng();
+    let mut address = String::with_capacity(42);
+    address.push_str("0x");
+    for _ in 0..40 {
+        address.push(rng.gen_range(b'0'..b'9').into());
+    }
+    println!("{:#?}", address);
+    address
+}); // These dummy addresses are numeric only, but they will do their job during development
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
