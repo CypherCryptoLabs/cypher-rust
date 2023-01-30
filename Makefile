@@ -21,7 +21,7 @@ run-container-%:
 	if ! [ -d ./testnet_volumes/$(TARGET)-$* ]; then mkdir ./testnet_volumes/$(TARGET)-$*; fi
 
 	$(eval SEED_IP := $(shell echo $* - 1 | bc))
-	docker run -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.$(SEED_IP) $(TARGET)
+	docker run -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.1 -e CYPHER_SEED_WALLET_ADDRESS=0x4010286387220381004084763062714255304864 $(TARGET)
 
 rm-container-%:
 	-docker container rm $(TARGET)-$*

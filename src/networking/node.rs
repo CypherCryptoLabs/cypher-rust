@@ -22,17 +22,17 @@ pub static LOCAL_BLOCKCHAIN_ADDRESS: once_cell::sync::Lazy<String> = once_cell::
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Node {
-    ip_address: String,
-    blockchain_address: String,
-    registration_timestamp: u64
+    pub ip_address: String,
+    pub blockchain_address: String,
+    pub registration_timestamp: u64
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct NodeInfo {
-    node_name: String,
-    node_version: String,
-    blockchain_address: String,
-    unix_time: u64
+    pub node_name: String,
+    pub node_version: String,
+    pub blockchain_address: String,
+    pub unix_time: u64
 }
 
 impl Node {
@@ -78,7 +78,7 @@ impl Node {
 
     pub async fn is_reachable(self) -> bool {
         
-        let body_string = super::client::http_request_timeout(self.ip_address).await;
+        let body_string = super::client::http_get_request_timeout(self.ip_address, "/".to_string()).await;
         let body_string_result: String;
 
         match body_string {
