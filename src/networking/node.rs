@@ -3,7 +3,6 @@ extern crate serde_json;
 extern crate rand;
 
 use regex::Regex;
-use std::format;
 use rand::Rng;
 use serde::{Serialize, Deserialize};
 use std::{time::{SystemTime, UNIX_EPOCH}};
@@ -39,13 +38,13 @@ impl Node {
     pub fn new(ip_address: String, blockchain_address: String, 
         registration_timestamp: u64) -> Result<Node, std::io::Error> {
             let now = SystemTime::now().duration_since(UNIX_EPOCH)
-                .expect("Time went backwards").as_micros() as u64;
+                .expect("Time went backwards").as_millis() as u64;
 
             if Regex::new(r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$")
                 .unwrap()
                 .is_match(&ip_address) && 
                 Regex::new(r"^0x[a-fA-F0-9]{40}$").unwrap().is_match(&blockchain_address) &&
-                registration_timestamp <= now &&
+                registration_timestamp <= now + 1000 &&
                 registration_timestamp > now - 10000
             {
                 return Ok(
@@ -71,6 +70,7 @@ impl Node {
 
         if !ip_already_in_use && !blockchain_address_already_in_use {
             NODE_LIST.push(self.to_owned());
+            return true;
         }
 
         return !ip_already_in_use && !blockchain_address_already_in_use;
@@ -97,12 +97,12 @@ impl Node {
             Ok(_) => {
                 let body_json = body_json_result.unwrap();
                 let now = SystemTime::now().duration_since(UNIX_EPOCH)
-                    .expect("Time went backwards").as_micros() as u64;
-                if body_json.unix_time <= now && body_json.unix_time > now - 10000 
+                    .expect("Time went backwards").as_millis() as u64;
+                if body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000 
                     && body_json.blockchain_address == self.blockchain_address{
                     true
                 } else {
-                    println!("{:#?}", body_string_result);
+                    println!("Different data received, than expected during reachability check!");
                     false
                 }
             }

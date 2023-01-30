@@ -3,7 +3,7 @@ extern crate hyper_routing;
 extern crate serde;
 extern crate serde_json;
 
-mod response;
+pub mod response;
 
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -70,7 +70,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
                 node_name: _NODE_NAME.to_string(),
                 node_version: _NODE_VERSION.to_string(),
                 unix_time: SystemTime::now().duration_since(UNIX_EPOCH)
-                .expect("Time went backwards").as_micros() as u64,
+                .expect("Time went backwards").as_millis() as u64,
                 blockchain_address: super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
             }
         ).unwrap();

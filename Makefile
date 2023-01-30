@@ -20,8 +20,8 @@ docker:
 run-container-%:
 	if ! [ -d ./testnet_volumes/$(TARGET)-$* ]; then mkdir ./testnet_volumes/$(TARGET)-$*; fi
 
-	$(eval SEED_IP := $(shell echo $* - 1 | bc))
-	docker run -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 172.0.0.$* -e CYPHER_EXTERNAL_IP=172.0.0.$* -e CYPHER_SEED_IP=172.0.0.1 -e CYPHER_SEED_WALLET_ADDRESS=0x4010286387220381004084763062714255304864 $(TARGET)
+	$(eval IP := $(shell echo $* + 1 | bc))
+	docker run --network cypher-testnet -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 10.0.0.$(IP) -e CYPHER_EXTERNAL_IP=10.0.0.$(IP) -e CYPHER_SEED_IP=10.0.0.2 -e CYPHER_SEED_WALLET_ADDRESS=0x4010286387220381004084763062714255304864 $(TARGET)
 
 rm-container-%:
 	-docker container rm $(TARGET)-$*
@@ -37,6 +37,8 @@ stop-testnet:
 
 testnet: 
 	if ! [ -d "./testnet_volumes" ]; then mkdir "./testnet_volumes"; fi
+
+	-docker network create --subnet 10.0.0.0/16 --internal cypher-testnet
 
 	$(MAKE) rm-container-1
 	$(MAKE) rm-container-2
