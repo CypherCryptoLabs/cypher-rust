@@ -11,8 +11,6 @@ use hyper::{service::{ make_service_fn, service_fn}, Server};
 use std::{convert::Infallible, io::{Error, ErrorKind}};
 use tokio;
 
-use self::node::Node;
-
 #[tokio::main]
 pub async fn start_http_server() {
 

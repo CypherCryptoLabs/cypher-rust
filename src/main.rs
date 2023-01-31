@@ -39,7 +39,7 @@ async fn main() {
         },
     }
 
-    let local_node_unwrapped = local_node.unwrap();
+    let mut local_node_unwrapped = local_node.unwrap();
     let seed_node_unwrapped = seed_node.unwrap();
 
     let registration_success =networking::register_to_network(&seed_node_unwrapped, &local_node_unwrapped).await;

@@ -116,7 +116,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
 
                 match request_body_json {
                     Ok(_) => {
-                        let new_node = request_body_json.unwrap();
+                        let mut new_node = request_body_json.unwrap();
                         unsafe { 
                             let register_success = new_node.register();
 
