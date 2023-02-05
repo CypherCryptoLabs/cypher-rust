@@ -114,7 +114,6 @@ impl Node {
                 }
 
                 notified_random_peers.push(random_node.to_owned());
-                println!("{:#?}", random_node)
             }
         }
 
@@ -130,7 +129,6 @@ impl Node {
 
         if !ip_already_in_use && !blockchain_address_already_in_use {
             NODE_LIST.push(self.to_owned());
-            println!("{:#?}", NODE_LIST);
             
             tokio::spawn({
                 let node_clone = self.clone();
@@ -166,10 +164,12 @@ impl Node {
                 let now = SystemTime::now().duration_since(UNIX_EPOCH)
                     .expect("Time went backwards").as_millis() as u64;
                 if body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000 
-                    && body_json.blockchain_address == self.blockchain_address{
+                    && body_json.blockchain_address == self.blockchain_address
+                {
                     node_ref.version = body_json.node_version;
                     true
                 } else {
+                    println!("{:#?} {:#?}", body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000, body_json.blockchain_address == self.blockchain_address);
                     println!("Different data received, than expected during reachability check!");
                     false
                 }

@@ -94,3 +94,37 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         }
     }
 }
+
+pub async fn sync_node_list(node: &node::Node) -> bool {
+    let seed_node_network = client::http_get_request_timeout(node.ip_address.clone(), "/v".to_string() + &node.version + "/network").await;
+    let seed_node_network_unwrapped: String;
+
+    match seed_node_network {
+        Ok(_) => {
+            seed_node_network_unwrapped = seed_node_network.unwrap();
+        }
+        Err(e) => {
+            println!("Something went wrong with the HTTP request: {:#?}", e);
+            return false;
+        },
+    }
+
+    let seed_node_network_json: Result<route_handler::response::GetNodes, serde_json::Error> = serde_json::from_str(&seed_node_network_unwrapped);
+    let seed_node_network_json_unwrapped: route_handler::response::GetNodes;
+
+    match seed_node_network_json {
+        Ok(_) => {
+            seed_node_network_json_unwrapped = seed_node_network_json.unwrap();
+        },
+        Err(e) => {
+            println!("Something went wrong with the JSON parsing: {:#?}\n{:#?}", e, seed_node_network_unwrapped);
+            return false;
+        }
+    }
+
+    unsafe {
+        node::NODE_LIST = seed_node_network_json_unwrapped.nodes;
+    }
+
+    return true;
+}

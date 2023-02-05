@@ -40,7 +40,16 @@ async fn main() {
     }
 
     let mut local_node_unwrapped = local_node.unwrap();
-    let seed_node_unwrapped = seed_node.unwrap();
+    let mut seed_node_unwrapped = seed_node.unwrap();
+    seed_node_unwrapped.version = config::SEED_VERSION.to_string();
+
+    unsafe {
+        //let register_result = rt.block_on(local_node.unwrap().register());
+        if !local_node_unwrapped.register().await {
+            println!("Could not add local Node to Node list.");
+            std::process::exit(1);
+        }
+    }
 
     let registration_success =networking::register_to_network(&seed_node_unwrapped, &local_node_unwrapped).await;
     
@@ -51,17 +60,18 @@ async fn main() {
                 println!("Could not register Node to network!");
                 std::process::exit(1);
             }
+
+            let network_sync_success = networking::sync_node_list(&seed_node_unwrapped).await;
+            if !network_sync_success {
+                println!("Could not sync network!");
+                std::process::exit(1);
+            }
+
+            unsafe { println!("{:#?}", networking::node::NODE_LIST); }
+
         }
         Err(e) => {
             println!("{}", e);
-            std::process::exit(1);
-        }
-    }
-
-    unsafe {
-        //let register_result = rt.block_on(local_node.unwrap().register());
-        if !local_node_unwrapped.register().await {
-            println!("Could not add Node to Node list.");
             std::process::exit(1);
         }
     }

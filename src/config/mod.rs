@@ -8,6 +8,7 @@ lazy_static! {
     pub static ref IP_ADDRESS: String = env::var("CYPHER_EXTERNAL_IP").unwrap_or_default();
     pub static ref SEED_IP_ADDRESS: String = env::var("CYPHER_SEED_IP").unwrap_or_default();
     pub static ref SEED_WALLET_ADDRESS: String = env::var("CYPHER_SEED_WALLET_ADDRESS").unwrap_or_default();
+    pub static ref SEED_VERSION: String = env::var("CYPHER_SEED_VERSION").unwrap_or_default();
 }
 
 pub fn load() {
@@ -54,6 +55,22 @@ pub fn load() {
                 .is_match(&SEED_WALLET_ADDRESS)
             {
                 println!("'CYPHER_SEED_WALLET_ADDRESS' is not set correctly!");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    match SEED_VERSION.as_str() {
+        "" => {
+            println!("'CYPHER_SEED_VERSION' not set!");
+            std::process::exit(1);
+        },
+        &_ => {
+            if !Regex::new(r"^\d+\.\d+\.\d+$")
+                .unwrap()
+                .is_match(&SEED_VERSION)
+            {
+                println!("'CYPHER_SEED_VERSION' is not set correctly!");
                 std::process::exit(1);
             }
         }
