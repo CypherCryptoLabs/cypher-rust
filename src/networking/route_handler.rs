@@ -1,5 +1,4 @@
 extern crate hyper;
-extern crate hyper_routing;
 extern crate serde;
 extern crate serde_json;
 
