@@ -9,6 +9,7 @@ lazy_static! {
     pub static ref SEED_IP_ADDRESS: String = env::var("CYPHER_SEED_IP").unwrap_or_default();
     pub static ref SEED_WALLET_ADDRESS: String = env::var("CYPHER_SEED_WALLET_ADDRESS").unwrap_or_default();
     pub static ref SEED_VERSION: String = env::var("CYPHER_SEED_VERSION").unwrap_or_default();
+    pub static ref SEED_PHRASE_PATH: String = env::var("CYPHER_SEED_PHRASE_PATH").unwrap_or("/data/seed_phrase.txt".to_string());
 }
 
 pub fn load() {
@@ -75,4 +76,19 @@ pub fn load() {
             }
         }
     }
+
+    // match SEED_PHRASE_PATH.as_str() {
+    //     "" => {
+    //         println!("'CYPHER_SEED_PHRASE_PATH' not set, using default value!");
+    //     },
+    //     &_ => {
+    //         if !Regex::new(r"^(/[a-zA-Z0-9._-]+)+$")
+    //             .unwrap()
+    //             .is_match(&SEED_PHRASE_PATH)
+    //         {
+    //             println!("'CYPHER_SEED_PHRASE_PATH' is not set correctly!");
+    //             std::process::exit(1);
+    //         }
+    //     }
+    // }
 }

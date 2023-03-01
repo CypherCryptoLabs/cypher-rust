@@ -2,3 +2,4 @@ target/*
 Cargo.lock
 .env
 testnet_volumes
+seed_phrase.txt

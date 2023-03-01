@@ -1,10 +1,12 @@
 mod config;
 mod networking;
+mod crypto;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
 async fn main() {
     config::load();
+    crypto::init();
     tokio::task::spawn_blocking(|| {networking::start_http_server()});
     println!("Node listening to {}:1234", config::IP_ADDRESS.to_string());
     tokio::time::sleep(std::time::Duration::from_millis(250)).await;
