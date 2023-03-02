@@ -9,15 +9,12 @@ use std::{time::{SystemTime, UNIX_EPOCH}};
 
 pub static mut NODE_LIST: Vec<Node> = vec![];
 pub static LOCAL_BLOCKCHAIN_ADDRESS: once_cell::sync::Lazy<String> = once_cell::sync::Lazy::new(|| {
-    let mut rng = rand::thread_rng();
-    let mut address = String::with_capacity(42);
-    address.push_str("0x");
-    for _ in 0..40 {
-        address.push(rng.gen_range(b'0'..b'9').into());
+    unsafe {
+        println_debug!("{:#?}", super::super::crypto::BLOCKCHAIN_ADDRESS);
+        super::super::crypto::BLOCKCHAIN_ADDRESS.clone()
     }
-    println!("{:#?}", address);
-    address
-}); // These dummy addresses are numeric only, but they will do their job during development
+    
+});
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Node {
@@ -44,7 +41,7 @@ impl Node {
             if Regex::new(r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$")
                 .unwrap()
                 .is_match(&ip_address) && 
-                Regex::new(r"^0x[a-fA-F0-9]{40}$").unwrap().is_match(&blockchain_address) &&
+                Regex::new(r"^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$").unwrap().is_match(&blockchain_address) &&
                 registration_timestamp <= now + 1000 &&
                 registration_timestamp > now - 10000
             {
@@ -58,6 +55,7 @@ impl Node {
                 )
             }
 
+            println_debug!("{:#?}", blockchain_address);
             return Err(std::io::Error::new(std::io::ErrorKind::Other, "Could not create Node: Malformed data"))
 
     }
@@ -96,7 +94,7 @@ impl Node {
                         registration_status_unwrapped = registration_status.unwrap();
                     }
                     Err(e) => {
-                        println!("{:#?}", e);
+                        println_debug!("{:#?}", e);
                         break;
                     }
                 }
@@ -151,7 +149,7 @@ impl Node {
                 body_string_result = body_string.unwrap()
             }
             Err(_) => {
-                println!("{:#?}", body_string.err());
+                println_debug!("{:#?}", body_string.err());
                 return false;
             }
         }
@@ -169,13 +167,13 @@ impl Node {
                     node_ref.version = body_json.node_version;
                     true
                 } else {
-                    println!("{:#?} {:#?}", body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000, body_json.blockchain_address == self.blockchain_address);
-                    println!("Different data received, than expected during reachability check!");
+                    println_debug!("{:#?} {:#?}", body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000, body_json.blockchain_address == self.blockchain_address);
+                    println_debug!("Different data received, than expected during reachability check!");
                     false
                 }
             }
             Err(_) => {
-                println!("{:#?}",  body_json_result.err());
+                println_debug!("{:#?}",  body_json_result.err());
                 false
             }
         }

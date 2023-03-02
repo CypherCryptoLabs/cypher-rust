@@ -1,3 +1,5 @@
+#[macro_use]
+mod debug;
 mod config;
 mod networking;
 mod crypto;
@@ -8,7 +10,7 @@ async fn main() {
     config::load();
     crypto::init();
     tokio::task::spawn_blocking(|| {networking::start_http_server()});
-    println!("Node listening to {}:1234", config::IP_ADDRESS.to_string());
+    println_debug!("Node listening to {}:1234", config::IP_ADDRESS.to_string());
     tokio::time::sleep(std::time::Duration::from_millis(250)).await;
     
     let local_node = networking::node::Node::new(
@@ -28,7 +30,7 @@ async fn main() {
     match local_node {
         Ok(_) => {},
         Err(e) => {
-            println!("{}", e);
+            println_debug!("{}", e);
             std::process::exit(1);
         },
     }
@@ -36,7 +38,7 @@ async fn main() {
     match seed_node {
         Ok(_) => {},
         Err(e) => {
-            println!("{}", e);
+            println_debug!("{}", e);
             std::process::exit(1);
         },
     }
@@ -48,7 +50,7 @@ async fn main() {
     unsafe {
         //let register_result = rt.block_on(local_node.unwrap().register());
         if !local_node_unwrapped.register().await {
-            println!("Could not add local Node to Node list.");
+            println_debug!("Could not add local Node to Node list.");
             std::process::exit(1);
         }
     }
@@ -59,21 +61,21 @@ async fn main() {
         Ok(_) => {
             let registration_success_unwrapped = registration_success.unwrap();
             if !registration_success_unwrapped {
-                println!("Could not register Node to network!");
+                println_debug!("Could not register Node to network!");
                 std::process::exit(1);
             }
 
             let network_sync_success = networking::sync_node_list(&seed_node_unwrapped).await;
             if !network_sync_success {
-                println!("Could not sync network!");
+                println_debug!("Could not sync network!");
                 std::process::exit(1);
             }
 
-            unsafe { println!("{:#?}", networking::node::NODE_LIST); }
+            unsafe { println_debug!("{:#?}", networking::node::NODE_LIST); }
 
         }
         Err(e) => {
-            println!("{}", e);
+            println_debug!("{}", e);
             std::process::exit(1);
         }
     }

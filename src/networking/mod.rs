@@ -25,13 +25,13 @@ pub async fn start_http_server() {
 
     // Run this server for... forever!
     if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+        println_debug!("server error: {}", e);
     }
 }
 
 pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node) -> Result<bool, std::io::Error> {
     if seed_node.ip_address == local_node.ip_address {
-        println!("Seed node is the same as local node. This node is seeding a new network!");
+        println_debug!("Seed node is the same as local node. This node is seeding a new network!");
         return Ok(true);
     }
 
@@ -76,7 +76,7 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
             registration_status_unwrapped = registration_status.unwrap();
         }
         Err(e) => {
-            println!("{:#?}", e);
+            println_debug!("{:#?}", e);
             return Err(e);
         }
     }
@@ -104,7 +104,7 @@ pub async fn sync_node_list(node: &node::Node) -> bool {
             seed_node_network_unwrapped = seed_node_network.unwrap();
         }
         Err(e) => {
-            println!("Something went wrong with the HTTP request: {:#?}", e);
+            println_debug!("Something went wrong with the HTTP request: {:#?}", e);
             return false;
         },
     }
@@ -117,7 +117,7 @@ pub async fn sync_node_list(node: &node::Node) -> bool {
             seed_node_network_json_unwrapped = seed_node_network_json.unwrap();
         },
         Err(e) => {
-            println!("Something went wrong with the JSON parsing: {:#?}\n{:#?}", e, seed_node_network_unwrapped);
+            println_debug!("Something went wrong with the JSON parsing: {:#?}\n{:#?}", e, seed_node_network_unwrapped);
             return false;
         }
     }

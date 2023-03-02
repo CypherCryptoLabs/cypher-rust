@@ -1,6 +1,8 @@
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
 use bitcoin::util::bip32::ExtendedPrivKey;
 
+pub static mut BLOCKCHAIN_ADDRESS: String = String::new();
+
 fn read_seed_phrase() -> String {
     let mut file = std::fs::File::open(super::config::SEED_PHRASE_PATH.to_string()).unwrap();
     let mut contents = String::new();
@@ -16,7 +18,7 @@ fn write_seed_phrase(phrase: &str) {
     match resutlt {
         Ok(_) => return,
         Err(e) => {
-            println!("{:#?}", e);
+            println_debug!("{:#?}", e);
             std::process::exit(1);
         }
     }
@@ -44,6 +46,6 @@ pub fn init() {
     let public_key = bitcoin::PublicKey::from_private_key(&secp, &master_key.to_priv());
     let address = bitcoin::Address::p2pkh(&public_key, bitcoin::Network::Bitcoin);
 
-    println!("{:#?}", address.to_string());
+    unsafe {BLOCKCHAIN_ADDRESS = address.to_string();}
 
 }

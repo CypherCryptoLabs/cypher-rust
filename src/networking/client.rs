@@ -19,7 +19,7 @@ pub async fn http_get_request_timeout(ip_address: String, endpoint: String) -> R
         }
         Err(_) => {
             let err = response_timeout.err();
-            println!("Timeout occured when checking a Nodes reachability: {:#?}", err);
+            println_debug!("Timeout occured when checking a Nodes reachability: {:#?}", err);
             return Err(Error::new(ErrorKind::TimedOut, "Timeout occured when checking a Nodes reachability"));
         }
     }
@@ -32,7 +32,7 @@ pub async fn http_get_request_timeout(ip_address: String, endpoint: String) -> R
         }
         Err(_) => {
             let err = response_timeout_unwrapped.err();
-            println!("{:#?}", err);
+            println_debug!("{:#?}", err);
             return Err(Error::new(ErrorKind::InvalidData, "Data could not be stringified."));
         }
     }
@@ -67,7 +67,7 @@ pub async fn http_post_request_timeout(ip_address: String, endpoint: String, bod
         }
         Err(_) => {
             let err = response_timeout.err();
-            println!("Timeout occured when checking a Nodes reachability: {:#?}", err);
+            println_debug!("Timeout occured when checking a Nodes reachability: {:#?}", err);
             return Err(Error::new(ErrorKind::TimedOut, "Timeout occured when checking a Nodes reachability"));
         }
     }
@@ -80,7 +80,7 @@ pub async fn http_post_request_timeout(ip_address: String, endpoint: String, bod
         }
         Err(_) => {
             let err = response_timeout_unwrapped.err();
-            println!("{:#?}", err);
+            println_debug!("{:#?}", err);
             return Err(Error::new(ErrorKind::InvalidData, "Data could not be stringified."));
         }
     }

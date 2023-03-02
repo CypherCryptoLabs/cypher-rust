@@ -15,7 +15,7 @@ lazy_static! {
 pub fn load() {
     match IP_ADDRESS.as_str() {
         "" => {
-            println!("'CYPHER_EXTERNAL_IP' not set!");
+            println_debug!("'CYPHER_EXTERNAL_IP' not set!");
             std::process::exit(1);
         },
         &_ => {
@@ -23,7 +23,7 @@ pub fn load() {
                 .unwrap()
                 .is_match(&IP_ADDRESS)
             {
-                println!("'CYPHER_EXTERNAL_IP' is not set correctly!");
+                println_debug!("'CYPHER_EXTERNAL_IP' is not set correctly!");
                 std::process::exit(1);
             }
         }
@@ -31,7 +31,7 @@ pub fn load() {
 
     match SEED_IP_ADDRESS.as_str() {
         "" => {
-            println!("'CYPHER_SEED_IP' not set!");
+            println_debug!("'CYPHER_SEED_IP' not set!");
             std::process::exit(1);
         },
         &_ => {
@@ -39,7 +39,7 @@ pub fn load() {
                 .unwrap()
                 .is_match(&SEED_IP_ADDRESS)
             {
-                println!("'CYPHER_SEED_IP' is not set correctly!");
+                println_debug!("'CYPHER_SEED_IP' is not set correctly!");
                 std::process::exit(1);
             }
         }
@@ -47,15 +47,15 @@ pub fn load() {
 
     match SEED_WALLET_ADDRESS.as_str() {
         "" => {
-            println!("'CYPHER_SEED_WALLET_ADDRESS' not set!");
+            println_debug!("'CYPHER_SEED_WALLET_ADDRESS' not set!");
             std::process::exit(1);
         },
         &_ => {
-            if !Regex::new(r"^0x[a-fA-F0-9]{40}$")
+            if !Regex::new(r"^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$")
                 .unwrap()
                 .is_match(&SEED_WALLET_ADDRESS)
             {
-                println!("'CYPHER_SEED_WALLET_ADDRESS' is not set correctly!");
+                println_debug!("'CYPHER_SEED_WALLET_ADDRESS' is not set correctly!");
                 std::process::exit(1);
             }
         }
@@ -63,7 +63,7 @@ pub fn load() {
 
     match SEED_VERSION.as_str() {
         "" => {
-            println!("'CYPHER_SEED_VERSION' not set!");
+            println_debug!("'CYPHER_SEED_VERSION' not set!");
             std::process::exit(1);
         },
         &_ => {
@@ -71,7 +71,7 @@ pub fn load() {
                 .unwrap()
                 .is_match(&SEED_VERSION)
             {
-                println!("'CYPHER_SEED_VERSION' is not set correctly!");
+                println_debug!("'CYPHER_SEED_VERSION' is not set correctly!");
                 std::process::exit(1);
             }
         }
@@ -79,14 +79,14 @@ pub fn load() {
 
     // match SEED_PHRASE_PATH.as_str() {
     //     "" => {
-    //         println!("'CYPHER_SEED_PHRASE_PATH' not set, using default value!");
+    //         println_debug!("'CYPHER_SEED_PHRASE_PATH' not set, using default value!");
     //     },
     //     &_ => {
     //         if !Regex::new(r"^(/[a-zA-Z0-9._-]+)+$")
     //             .unwrap()
     //             .is_match(&SEED_PHRASE_PATH)
     //         {
-    //             println!("'CYPHER_SEED_PHRASE_PATH' is not set correctly!");
+    //             println_debug!("'CYPHER_SEED_PHRASE_PATH' is not set correctly!");
     //             std::process::exit(1);
     //         }
     //     }
