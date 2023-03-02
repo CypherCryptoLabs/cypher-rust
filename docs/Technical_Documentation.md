@@ -19,7 +19,7 @@ Cyphers API is accessible with the "1234" port. A HTTP server is listening to th
 This endpoint returns an object similar to this:
 ```
 curl -X GET localhost:1234/
-{"blockchain_address":"0x742d35Cc6634C0532925a3b844Bc454e4438f44e","node_name":"cypher-rust","node_version":"0.1.0","unix_time":1674812146914537}
+{"blockchain_address":"1N1o78bZ7d5LbAhZq1pcDVJkT3AYRRr5bC","node_name":"cypher-rust","node_version":"0.1.0","unix_time":1674812146914537}
 ```
 
 |Field|Description|
@@ -33,7 +33,7 @@ unix_time|The nodes current unix timestamp in milliseconds
 This endpoint returns an array similar to this:
 ```
 curl -X GET localhost:1234/<version number>/network
-[{"blockchain_address":"0x742d35Cc6634C0532925a3b844Bc454e4438f44e","ip_address":"192.168.178.22","registration_timestamp":1674812128203784}]
+[{"blockchain_address":"1N1o78bZ7d5LbAhZq1pcDVJkT3AYRRr5bC","ip_address":"192.168.178.22","registration_timestamp":1674812128203784}]
 ```
 Each object in the array contains the following fields:
 
@@ -46,7 +46,7 @@ Each object in the array contains the following fields:
 ### /\<version number>/network/node
 This endpoint returns an object similar to this:
 ```
-curl -X POST -d "{\"ip_address\": \"123.123.123.123\", \"blockchain_address\": \"0x0000000000000000000000000000000000000000\", \"registration_timestamp\": $(date +%s%3N), \"version\": \"0.1.0\"}" localhost:1234/v0.1.0/network/node
+curl -X POST -d "{\"ip_address\": \"123.123.123.123\", \"blockchain_address\": \"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\", \"registration_timestamp\": $(date +%s%3N), \"version\": \"0.1.0\"}" localhost:1234/v0.1.0/network/node
 {"status":true}
 ```
 
