@@ -1,5 +1,5 @@
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
-use std::fs;
+use bitcoin::util::bip32::ExtendedPrivKey;
 
 fn read_seed_phrase() -> String {
     let mut file = std::fs::File::open(super::config::SEED_PHRASE_PATH.to_string()).unwrap();
@@ -23,24 +23,27 @@ fn write_seed_phrase(phrase: &str) {
 }
 
 pub fn init() {
+    // Compressed address legacy (P2PKH)
     let mnemonic: Mnemonic;
-    let phrase: &str;
-    let metadata = fs::metadata(super::config::SEED_PHRASE_PATH.to_string());
+    let metadata = std::fs::metadata(super::config::SEED_PHRASE_PATH.to_string());
     match metadata {
         Ok(_) => {
             mnemonic = Mnemonic::from_phrase(&read_seed_phrase(), Language::English).unwrap();
-            phrase = mnemonic.phrase();
         },
         Err(_) => {
             mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
-            phrase = mnemonic.phrase();
-            write_seed_phrase(phrase);
+            write_seed_phrase(mnemonic.phrase());
         },
     }
-    
-    println!("phrase: {}", phrase);
 
     let seed = Seed::new(&mnemonic, "");
     let seed_bytes: &[u8] = seed.as_bytes();
-    println!("{:X}", seed);
+
+    let master_key = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, seed_bytes).unwrap();
+    let secp = bitcoin::secp256k1::Secp256k1::new();
+    let public_key = bitcoin::PublicKey::from_private_key(&secp, &master_key.to_priv());
+    let address = bitcoin::Address::p2pkh(&public_key, bitcoin::Network::Bitcoin);
+
+    println!("{:#?}", address.to_string());
+
 }
