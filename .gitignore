@@ -3,3 +3,4 @@ Cargo.lock
 .env
 testnet_volumes
 seed_phrase.txt
+*/__pycache__
