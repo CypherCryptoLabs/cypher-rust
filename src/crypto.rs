@@ -26,6 +26,7 @@ fn write_seed_phrase(phrase: &str) {
 
 pub fn init() {
     // Compressed address legacy (P2PKH)
+    // derivationpath "m/"
     let mnemonic: Mnemonic;
     let metadata = std::fs::metadata(super::config::SEED_PHRASE_PATH.to_string());
     match metadata {
