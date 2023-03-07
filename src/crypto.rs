@@ -1,7 +1,10 @@
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
 use bitcoin::util::bip32::ExtendedPrivKey;
+use hex;
 
 pub static mut BLOCKCHAIN_ADDRESS: String = String::new();
+pub static mut PUBLIC_KEY: Option<bitcoin::secp256k1::PublicKey> = None;
+static mut PRIVATE_KEY: Option<bitcoin::secp256k1::SecretKey> = None;
 
 fn read_seed_phrase() -> String {
     let mut file = std::fs::File::open(super::config::SEED_PHRASE_PATH.to_string()).unwrap();
@@ -43,10 +46,20 @@ pub fn init() {
     let seed_bytes: &[u8] = seed.as_bytes();
 
     let master_key = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, seed_bytes).unwrap();
+
+    // generate Blockchain address
     let secp = bitcoin::secp256k1::Secp256k1::new();
     let public_key = bitcoin::PublicKey::from_private_key(&secp, &master_key.to_priv());
     let address = bitcoin::Address::p2pkh(&public_key, bitcoin::Network::Bitcoin);
 
-    unsafe {BLOCKCHAIN_ADDRESS = address.to_string();}
+    let keypair = master_key.to_keypair(&secp);
+    let private_key = keypair.secret_key();
+
+    unsafe {
+        BLOCKCHAIN_ADDRESS = address.to_string();
+        PUBLIC_KEY = Some(keypair.public_key());
+        PRIVATE_KEY = Some(private_key);
+        println_debug!("{:#?}\n{:#?}", hex::encode(private_key.secret_bytes()), PUBLIC_KEY.unwrap());
+    }
 
 }
