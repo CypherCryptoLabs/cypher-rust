@@ -1,5 +1,7 @@
+use std::str::FromStr;
+
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
-use bitcoin::util::bip32::ExtendedPrivKey;
+use bitcoin::{util::bip32::ExtendedPrivKey, secp256k1::{Message, ecdsa}, hashes::sha256};
 use hex;
 
 pub static mut BLOCKCHAIN_ADDRESS: String = String::new();
@@ -63,3 +65,20 @@ pub fn init() {
     }
 
 }
+
+pub fn sign_string(message: &str) {
+    unsafe{
+        let scep_message: bitcoin::secp256k1::Message = bitcoin::secp256k1::Message::from_hashed_data::<sha256::Hash>(message.as_bytes());
+        let private_key = PRIVATE_KEY.unwrap();
+        let scep_context = bitcoin::secp256k1::Secp256k1::signing_only();
+
+        let signature = scep_context.sign_ecdsa(&scep_message, &private_key);
+        println_debug!("{:#?}", signature.to_string());
+    }
+}
+
+// pub fn verify_signature(signature: &str) {
+//     unsafe {
+//         let scep_signaure = ecdsa::Signature::from_str(signature).unwrap();
+//     }
+// }
