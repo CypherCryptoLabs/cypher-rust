@@ -66,19 +66,25 @@ pub fn init() {
 
 }
 
-pub fn sign_string(message: &str) {
-    unsafe{
-        let scep_message: bitcoin::secp256k1::Message = bitcoin::secp256k1::Message::from_hashed_data::<sha256::Hash>(message.as_bytes());
-        let private_key = PRIVATE_KEY.unwrap();
-        let scep_context = bitcoin::secp256k1::Secp256k1::signing_only();
-
-        let signature = scep_context.sign_ecdsa(&scep_message, &private_key);
-        println_debug!("{:#?}", signature.to_string());
-    }
+pub fn str_to_msg(message: &str) -> secp256k1::Message {
+    let scep_message: secp256k1::Message = secp256k1::Message::from_hashed_data::<sha256::Hash>(message.as_bytes());
+    return scep_message;
 }
 
-// pub fn verify_signature(signature: &str) {
-//     unsafe {
-//         let scep_signaure = ecdsa::Signature::from_str(signature).unwrap();
-//     }
-// }
+pub fn sign_string(message: &str) -> String {
+    let scep_message: bitcoin::secp256k1::Message = bitcoin::secp256k1::Message::from_hashed_data::<sha256::Hash>(message.as_bytes());
+    let private_key = unsafe{PRIVATE_KEY.unwrap()};
+    let scep_context = bitcoin::secp256k1::Secp256k1::signing_only();
+
+    let signature = scep_context.sign_ecdsa(&scep_message, &private_key);
+    println_debug!("{:#?}", signature.to_string());
+
+    return signature.to_string();
+}
+
+pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> Result<(), secp256k1::Error> {
+    let message_secp = str_to_msg(message);
+    let scep_signaure = ecdsa::Signature::from_str(signature).unwrap();
+    let secp_public_key = secp256k1::PublicKey::from_str(public_key).unwrap();
+    scep_signaure.verify(&message_secp, &secp_public_key)
+}
