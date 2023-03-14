@@ -14,6 +14,13 @@ def get_root_key():
 
     return bip32utils.BIP32Key.fromEntropy(seed)
 
+def get_pub_key():
+    root_key = get_root_key().PrivateKey()
+    private_key = secp256k1.PrivateKey(root_key, True)
+    public_key = private_key.pubkey
+
+    return public_key
+
 def get_address():
     root_key = get_root_key()
     root_address = root_key.Address()

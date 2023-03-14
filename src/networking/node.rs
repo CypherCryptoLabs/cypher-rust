@@ -10,7 +10,6 @@ use std::{time::{SystemTime, UNIX_EPOCH}};
 pub static mut NODE_LIST: Vec<Node> = vec![];
 pub static LOCAL_BLOCKCHAIN_ADDRESS: once_cell::sync::Lazy<String> = once_cell::sync::Lazy::new(|| {
     unsafe {
-        println_debug!("{:#?}", super::super::crypto::BLOCKCHAIN_ADDRESS);
         super::super::crypto::BLOCKCHAIN_ADDRESS.clone()
     }
     
@@ -24,7 +23,7 @@ pub struct Node {
     pub version: String
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeInfo {
     pub node_name: String,
     pub node_version: String,
@@ -154,11 +153,11 @@ impl Node {
             }
         }
 
-        let body_json_result:Result<NodeInfo, serde_json::Error> = serde_json::from_str(body_string_result.as_str());
+        let body_json_result:Result<super::route_handler::MetaData<NodeInfo>, serde_json::Error> = serde_json::from_str(body_string_result.as_str());
 
         match body_json_result {
             Ok(_) => {
-                let body_json = body_json_result.unwrap();
+                let body_json = body_json_result.unwrap().payload;
                 let now = SystemTime::now().duration_since(UNIX_EPOCH)
                     .expect("Time went backwards").as_millis() as u64;
                 if body_json.unix_time <= now + 10000 && body_json.unix_time > now - 10000 

@@ -77,7 +77,6 @@ pub fn sign_string(message: &str) -> String {
     let scep_context = bitcoin::secp256k1::Secp256k1::signing_only();
 
     let signature = scep_context.sign_ecdsa(&scep_message, &private_key);
-    println_debug!("{:#?}", signature.to_string());
 
     return signature.to_string();
 }

@@ -43,26 +43,23 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         Err(e) => {return Err(e);}
     }
 
-    let seed_node_info_json: Result<node::NodeInfo, serde_json::Error> = serde_json::from_str(&seed_node_info_unwrapped);
+    let seed_node_info_json: Result<route_handler::MetaData<node::NodeInfo>, serde_json::Error> = serde_json::from_str(&seed_node_info_unwrapped);
     let seed_node_version: String;
 
     match seed_node_info_json {
         Ok(_) => {
-            let data = seed_node_info_json.unwrap();
+            let data = seed_node_info_json.unwrap().payload;
             seed_node_version = data.node_version;
         }
-        Err(_) => {
-            return Err(Error::new(ErrorKind::Other, "Could not convert NodeInfo to json"));
+        Err(e) => {
+            println_debug!("{:#?}", e);
+            return Err(Error::new(ErrorKind::Other, e));
         }
     }
 
-    let node_json = serde_json::to_string(local_node);
-    let node_json_string: String;
+    let node_json_string: String = unsafe{route_handler::MetaData::new(local_node)};
 
-    match node_json {
-        Ok(_) => {node_json_string = node_json.unwrap()}
-        Err(_) => {return Err(Error::new(ErrorKind::InvalidData, "Could not stringify Node"));}
-    }
+    println_debug!("{:#?}", node_json_string);
 
     let registration_status = client::http_post_request_timeout(
         seed_node.ip_address.to_owned(), 
@@ -81,15 +78,15 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         }
     }
 
-    let registration_status_json: Result<route_handler::response::PostNode, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
+    let registration_status_json: Result<route_handler::MetaData<route_handler::response::PostNode>, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
 
     match registration_status_json {
         Ok(_) => {
-            return Ok(registration_status_json.unwrap().status);
+            return Ok(registration_status_json.unwrap().payload.status);
         }
 
-        Err(_) => {
-            return Err(Error::new(ErrorKind::Other, "Could not convert to to PostNode"));
+        Err(e) => {
+            return Err(Error::new(ErrorKind::Other, e));
             
         }
     }
@@ -109,12 +106,12 @@ pub async fn sync_node_list(node: &node::Node) -> bool {
         },
     }
 
-    let seed_node_network_json: Result<route_handler::response::GetNodes, serde_json::Error> = serde_json::from_str(&seed_node_network_unwrapped);
+    let seed_node_network_json: Result<route_handler::MetaData<route_handler::response::GetNodes>, serde_json::Error> = serde_json::from_str(&seed_node_network_unwrapped);
     let seed_node_network_json_unwrapped: route_handler::response::GetNodes;
 
     match seed_node_network_json {
         Ok(_) => {
-            seed_node_network_json_unwrapped = seed_node_network_json.unwrap();
+            seed_node_network_json_unwrapped = seed_node_network_json.unwrap().payload;
         },
         Err(e) => {
             println_debug!("Something went wrong with the JSON parsing: {:#?}\n{:#?}", e, seed_node_network_unwrapped);

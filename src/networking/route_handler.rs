@@ -4,17 +4,62 @@ extern crate serde_json;
 
 pub mod response;
 
+use bitcoin::util::address::Payload;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
+use secp256k1::PublicKey;
 use std::convert::Infallible;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
+use hex;
+
+use super::node::Node;
 
 struct Route<'a> {
     path: &'a str,
     method: &'a str,
     handler:  fn(Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>>
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct MetaData<T> {
+    pub payload: T,
+    signature: String,
+    public_key: String,
+    timestamp: u64
+}
+
+impl<T: serde::Serialize+Clone> MetaData<T> {
+
+    pub unsafe fn new(payload:T) -> String{
+
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct MetaDataPreSignature<T>{
+            payload: T,
+            public_key: String,
+            timestamp: u64
+        }
+
+        let public_key_string = hex::encode(&super::super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec());
+        let data = MetaDataPreSignature {
+            payload: payload,
+            public_key: public_key_string,
+            timestamp: SystemTime::now().duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards").as_millis() as u64,
+        };
+
+        let meta_data_string = serde_json::to_string(&data).unwrap();
+        let signature = super::super::crypto::sign_string(&meta_data_string);
+
+        return serde_json::to_string(&MetaData { payload: data.payload, signature, public_key: data.public_key, timestamp: data.timestamp }).unwrap();
+
+    }
+
+    pub fn verify() -> bool {
+        todo!()
+    }
+
 }
 
 static _NODE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -64,30 +109,31 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async {
-        let body: String = serde_json::to_string(
-            &response::GetInfo {
+        unsafe{
+            let body = MetaData::new(response::GetInfo{
                 node_name: _NODE_NAME.to_string(),
                 node_version: _NODE_VERSION.to_string(),
                 unix_time: SystemTime::now().duration_since(UNIX_EPOCH)
                 .expect("Time went backwards").as_millis() as u64,
                 blockchain_address: super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
-            }
-        ).unwrap();
+            });
+        
 
-        let response = Response::builder()
-            .header(CONTENT_LENGTH, body.len() as u64)
-            .header(CONTENT_TYPE, "text/plain")
-            .body(Body::from(body))
-            .expect("Failed to construct the response");
+            let response = Response::builder()
+                .header(CONTENT_LENGTH, body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(body))
+                .expect("Failed to construct the response");
 
-        response
+            response
+        }
     })
 }
 
 fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
         unsafe {
-            let body: String = serde_json::to_string(&response::GetNodes{nodes: super::node::NODE_LIST.clone()}).unwrap();
+            let body: String = MetaData::new(response::GetNodes{nodes: super::node::NODE_LIST.clone()});
 
             let response = Response::builder()
                 .header(CONTENT_LENGTH, body.len() as u64)
@@ -111,15 +157,15 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         match data {
             Ok(_) => {
                 let request_body_str = data.unwrap();
-                let request_body_json:Result<super::node::Node, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+                let request_body_json:Result<MetaData<super::node::Node>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
 
                 match request_body_json {
                     Ok(_) => {
-                        let mut new_node = request_body_json.unwrap();
+                        let mut new_node = request_body_json.unwrap().payload;
                         unsafe { 
-                            let register_success = new_node.register();
+                            let register_success = new_node.register().await;
 
-                            let body: String = serde_json::to_string(&response::PostNode{status: register_success.await,}).unwrap();
+                            let body: String = MetaData::new(response::PostNode{status: register_success});
 
                             response = Response::builder()
                                 .header(CONTENT_LENGTH, body.len() as u64)
