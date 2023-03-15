@@ -5,11 +5,13 @@ extern crate serde_json;
 pub mod response;
 
 use bitcoin::util::address::Payload;
+use futures_util::future::ok;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
 use secp256k1::PublicKey;
 use std::convert::Infallible;
+use std::error::Error;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
@@ -22,7 +24,7 @@ struct Route<'a> {
     handler:  fn(Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>>
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct MetaData<T> {
     pub payload: T,
     signature: String,
@@ -30,16 +32,16 @@ pub struct MetaData<T> {
     timestamp: u64
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct MetaDataPreSignature<T>{
+    payload: T,
+    public_key: String,
+    timestamp: u64
+}
+
 impl<T: serde::Serialize+Clone> MetaData<T> {
 
     pub unsafe fn new(payload:T) -> String{
-
-        #[derive(serde::Serialize, serde::Deserialize)]
-        struct MetaDataPreSignature<T>{
-            payload: T,
-            public_key: String,
-            timestamp: u64
-        }
 
         let public_key_string = hex::encode(&super::super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec());
         let data = MetaDataPreSignature {
@@ -56,8 +58,24 @@ impl<T: serde::Serialize+Clone> MetaData<T> {
 
     }
 
-    pub fn verify() -> bool {
-        todo!()
+    pub fn verify(&self) -> bool {
+        let result = || -> Result<bool, serde_json::error::Error> {
+            let data = MetaDataPreSignature {
+                payload: self.payload.clone(),
+                public_key: self.public_key.clone(),
+                timestamp: self.timestamp
+            };
+
+            let message_string = serde_json::to_string(&data)?;
+            let signature_ok = super::super::crypto::verify_signature(&self.signature, &message_string, &self.public_key);
+
+            return Ok(signature_ok);
+        }();
+
+        match result {
+            Ok(_) => {return result.unwrap();},
+            Err(_) => {return false;}
+        }
     }
 
 }

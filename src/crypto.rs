@@ -81,9 +81,20 @@ pub fn sign_string(message: &str) -> String {
     return signature.to_string();
 }
 
-pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> Result<(), secp256k1::Error> {
-    let message_secp = str_to_msg(message);
-    let scep_signaure = ecdsa::Signature::from_str(signature).unwrap();
-    let secp_public_key = secp256k1::PublicKey::from_str(public_key).unwrap();
-    scep_signaure.verify(&message_secp, &secp_public_key)
+pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> bool {
+    let result = || -> Result<bool, secp256k1::Error> {
+        let message_secp = str_to_msg(message);
+        let scep_signaure = ecdsa::Signature::from_str(signature)?;
+        let secp_public_key = secp256k1::PublicKey::from_str(public_key)?;
+        
+        match scep_signaure.verify(&message_secp, &secp_public_key) {
+            Ok(_) => {return Ok(true);},
+            Err(_) => {return Ok(false);}
+        }
+    }();
+
+    match result {
+        Ok(_) => {return result.unwrap();},
+        Err(e) => {return false;}
+    }
 }
