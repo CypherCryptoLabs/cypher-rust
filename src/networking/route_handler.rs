@@ -35,8 +35,8 @@ pub struct MetaData<T> {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct MetaDataPreSignature<T>{
     payload: T,
-    public_key: String,
-    timestamp: u64
+    timestamp: u64,
+    public_key: String
 }
 
 impl<T: serde::Serialize+Clone> MetaData<T> {
@@ -170,53 +170,50 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         let bytes = body::to_bytes(body).await.unwrap();
         let data = String::from_utf8((&*bytes).to_vec());
 
-        let mut response: Response<Body>;
+        let mut body = "400 - Malformed Request";
+        let mut response = Response::builder()
+            .header(CONTENT_LENGTH, body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .expect("Failed to construct the response");
 
+        let request_body_str: String;
         match data {
             Ok(_) => {
-                let request_body_str = data.unwrap();
-                let request_body_json:Result<MetaData<super::node::Node>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
-
-                match request_body_json {
-                    Ok(_) => {
-                        let mut new_node = request_body_json.unwrap().payload;
-                        unsafe { 
-                            let register_success = new_node.register().await;
-
-                            let body: String = MetaData::new(response::PostNode{status: register_success});
-
-                            response = Response::builder()
-                                .header(CONTENT_LENGTH, body.len() as u64)
-                                .header(CONTENT_TYPE, "text/plain")
-                                .body(Body::from(body))
-                                .expect("Failed to construct the response")
-                        }
-                    }
-
-                    Err(_) => {
-                        let body = "400 - Malformed Request";
-                        response = Response::builder()
-                                .header(CONTENT_LENGTH, body.len() as u64)
-                                .header(CONTENT_TYPE, "text/plain")
-                                .body(Body::from(body))
-                                .expect("Failed to construct the response");
-
-                        *response.status_mut() = StatusCode::BAD_REQUEST;
-                    }
-                }
+                request_body_str = data.unwrap();
             }
             Err(_) => {
-                let body = "400 - Malformed Request";
-                response = Response::builder()
-                        .header(CONTENT_LENGTH, body.len() as u64)
-                        .header(CONTENT_TYPE, "text/plain")
-                        .body(Body::from(body))
-                        .expect("Failed to construct the response");
+                return response;
+            }
+        }
 
-                *response.status_mut() = StatusCode::BAD_REQUEST;
+        let request_body_json:Result<MetaData<super::node::Node>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+        let mut new_node: Node;
+        match request_body_json {
+            Ok(_) => {
+                if request_body_json.as_ref().unwrap().verify() {
+                    new_node = request_body_json.unwrap().payload;
+                } else {
+                    return response;
+                }
+            },
+            Err(_) => {
+                return response;
             },
         }
 
-        response
+        unsafe {
+            let register_success = new_node.register().await;
+
+            let registration_body= MetaData::new(response::PostNode{status: register_success});
+
+            response = Response::builder()
+                .header(CONTENT_LENGTH, registration_body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(registration_body))
+                .expect("Failed to construct the response");
+        }
+
+        return response;
     })
 }

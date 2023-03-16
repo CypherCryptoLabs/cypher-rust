@@ -89,12 +89,18 @@ pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> boo
         
         match scep_signaure.verify(&message_secp, &secp_public_key) {
             Ok(_) => {return Ok(true);},
-            Err(_) => {return Ok(false);}
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return Ok(false);
+            }
         }
     }();
 
     match result {
         Ok(_) => {return result.unwrap();},
-        Err(e) => {return false;}
+        Err(e) => {
+            println_debug!("TEST");
+            return false;
+        }
     }
 }

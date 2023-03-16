@@ -29,10 +29,11 @@ body = {
     "public_key" : crypto_tools.get_pub_key().serialize(False).hex()
 }
 
-body["signature"] = pk.ecdsa_serialize(pk, crypto_tools.sign_string(json.dumps(body))).hex()
+body["signature"] = pk.ecdsa_serialize(pk, crypto_tools.sign_string(json.dumps(body, separators=(',', ':')))).hex()
+print(json.dumps(body, separators=(',', ':')))
 
 # Try to register the local node
-response = requests.post("http://localhost:" + str(cypher.node_port) + "/v" + cypher.node_version + "/network/node", json.dumps(body))
+response = requests.post("http://localhost:" + str(cypher.node_port) + "/v" + cypher.node_version + "/network/node", json.dumps(body, separators=(',', ':')))
 
 if response.status_code != 200:
     print("Node did not accept body!")
@@ -49,9 +50,10 @@ random_string = random_string[:34]
 
 body["payload"]["blockchain_address"] = random_string
 body["payload"]["ip_address"] = "123.123.123.123"
-body["signature"] = pk.ecdsa_serialize(pk, crypto_tools.sign_string(json.dumps(body))).hex()
+del body["signature"]
+body["signature"] = pk.ecdsa_serialize(pk, crypto_tools.sign_string(json.dumps(body, separators=(',', ':')))).hex()
 
-response = requests.post("http://localhost:" + str(cypher.node_port) + "/v" + cypher.node_version + "/network/node", json.dumps(body))
+response = requests.post("http://localhost:" + str(cypher.node_port) + "/v" + cypher.node_version + "/network/node", json.dumps(body, separators=(',', ':')))
 
 if response.status_code != 200:
     print("Node did not accept body!")
