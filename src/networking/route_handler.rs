@@ -39,9 +39,13 @@ struct MetaDataPreSignature<T>{
     public_key: String
 }
 
+impl<T: serde::Serialize+Clone> MetaDataPreSignature<T> {
+    
+}
+
 impl<T: serde::Serialize+Clone> MetaData<T> {
 
-    pub unsafe fn new(payload:T) -> String{
+    pub unsafe fn new(payload:T) -> MetaData<T> {
 
         let public_key_string = hex::encode(&super::super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec());
         let data = MetaDataPreSignature {
@@ -54,8 +58,12 @@ impl<T: serde::Serialize+Clone> MetaData<T> {
         let meta_data_string = serde_json::to_string(&data).unwrap();
         let signature = super::super::crypto::sign_string(&meta_data_string);
 
-        return serde_json::to_string(&MetaData { payload: data.payload, signature, public_key: data.public_key, timestamp: data.timestamp }).unwrap();
+        return MetaData { payload: data.payload, signature, public_key: data.public_key, timestamp: data.timestamp };
 
+    }
+
+    pub fn to_string(self) -> String {
+        return serde_json::to_string(&self).unwrap();
     }
 
     pub fn verify(&self) -> bool {
@@ -76,6 +84,58 @@ impl<T: serde::Serialize+Clone> MetaData<T> {
             Ok(_) => {return result.unwrap();},
             Err(_) => {return false;}
         }
+    }
+
+    pub async unsafe fn broadcast(self) {
+        let mut notified_random_peers: Vec<Node> = vec![];
+        let mut random_peers_successfully_notified = 0;
+        let n_random_peers: i32 = if super::node::NODE_LIST.len() > 8 {
+            8 as i32
+        } else {
+            super::node::NODE_LIST.len() as i32
+        };
+        let self_str = serde_json::to_string(&self).unwrap();
+        let mut rng = <::rand::rngs::StdRng as rand::SeedableRng>::from_seed(rand::Rng::gen(&mut rand::rngs::OsRng));
+
+        while (notified_random_peers.len() as i32) < n_random_peers && random_peers_successfully_notified < n_random_peers {
+            let random_node_index = rand::Rng::gen_range(&mut rng, 0..super::node::NODE_LIST.len());
+            let random_node: &Node = &super::node::NODE_LIST[random_node_index];
+
+            if !notified_random_peers.contains(random_node) {
+                let registration_status = super::client::http_post_request_timeout(
+                    random_node.ip_address.to_owned(), 
+                    "/v".to_string() + &random_node.version + "/network/node",
+                    self_str.clone()
+                ).await;
+                let registration_status_unwrapped: String;
+
+                match registration_status {
+                    Ok(_) => {
+                        registration_status_unwrapped = registration_status.unwrap();
+                    }
+                    Err(e) => {
+                        println_debug!("{:#?}", e);
+                        break;
+                    }
+                }
+
+                let registration_status_json: Result<MetaData<super::route_handler::response::PostNode>, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
+
+                match registration_status_json {
+                    Ok(_) => {
+                        random_peers_successfully_notified += 1;
+                    }
+
+                    Err(e) => {
+                        println_debug!("{:#?}", e);
+                        break;
+                    }
+                }
+
+                notified_random_peers.push(random_node.to_owned());
+            }
+        }
+
     }
 
 }
@@ -134,7 +194,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
                 unix_time: SystemTime::now().duration_since(UNIX_EPOCH)
                 .expect("Time went backwards").as_millis() as u64,
                 blockchain_address: super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()
-            });
+            }).to_string();
         
 
             let response = Response::builder()
@@ -151,7 +211,7 @@ fn get_info(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
 fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
         unsafe {
-            let body: String = MetaData::new(response::GetNodes{nodes: super::node::NODE_LIST.clone()});
+            let body: String = MetaData::new(response::GetNodes{nodes: super::node::NODE_LIST.clone()}).to_string();
 
             let response = Response::builder()
                 .header(CONTENT_LENGTH, body.len() as u64)
@@ -205,7 +265,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         unsafe {
             let register_success = new_node.register().await;
 
-            let registration_body= MetaData::new(response::PostNode{status: register_success});
+            let registration_body= MetaData::new(response::PostNode{status: register_success}).to_string();
 
             response = Response::builder()
                 .header(CONTENT_LENGTH, registration_body.len() as u64)

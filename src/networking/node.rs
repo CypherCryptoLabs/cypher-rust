@@ -59,63 +59,6 @@ impl Node {
 
     }
 
-    async unsafe fn broadcast_registration(self) {
-        let mut notified_random_peers: Vec<Node> = vec![];
-        let mut random_peers_successfully_notified = 0;
-        let n_random_peers: i32 = if NODE_LIST.len() > 8 {
-            8 as i32
-        } else {
-            NODE_LIST.len() as i32
-        };
-        let node_json = serde_json::to_string(&self);
-        let node_json_string: String;
-        let mut rng = <::rand::rngs::StdRng as rand::SeedableRng>::from_seed(rand::rngs::OsRng.gen());
-
-        match node_json {
-            Ok(_) => {node_json_string = node_json.unwrap()}
-            Err(_) => {return;}
-        }
-
-        while (notified_random_peers.len() as i32) < n_random_peers && random_peers_successfully_notified < n_random_peers {
-            let random_node_index = rng.gen_range(0..NODE_LIST.len());
-            let random_node: &Node = &NODE_LIST[random_node_index];
-
-            if !notified_random_peers.contains(random_node) {
-                let registration_status = super::client::http_post_request_timeout(
-                    random_node.ip_address.to_owned(), 
-                    "/v".to_string() + &random_node.version + "/network/node",
-                    node_json_string.clone()
-                ).await;
-                let registration_status_unwrapped: String;
-
-                match registration_status {
-                    Ok(_) => {
-                        registration_status_unwrapped = registration_status.unwrap();
-                    }
-                    Err(e) => {
-                        println_debug!("{:#?}", e);
-                        break;
-                    }
-                }
-
-                let registration_status_json: Result<super::route_handler::response::PostNode, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
-
-                match registration_status_json {
-                    Ok(_) => {
-                        random_peers_successfully_notified += 1;
-                    }
-
-                    Err(_) => {
-                        break;
-                    }
-                }
-
-                notified_random_peers.push(random_node.to_owned());
-            }
-        }
-
-    }
-
     pub async unsafe fn register(&mut self) -> bool {
         if !self.to_owned().is_reachable(self).await {
             return false;
@@ -128,8 +71,11 @@ impl Node {
             NODE_LIST.push(self.to_owned());
             
             tokio::spawn({
-                let node_clone = self.clone();
-                node_clone.broadcast_registration()
+
+                let node_metadata = super::route_handler::MetaData::new(self.clone());
+                node_metadata.broadcast()
+
+                //node_clone.broadcast_registration()
             });
 
             return true;
