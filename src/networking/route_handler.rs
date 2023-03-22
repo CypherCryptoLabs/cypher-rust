@@ -43,7 +43,7 @@ impl<T: serde::Serialize+Clone> MetaDataPreSignature<T> {
     
 }
 
-impl<T: serde::Serialize+Clone> MetaData<T> {
+impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> MetaData<T> {
 
     pub unsafe fn new(payload:T) -> MetaData<T> {
 
@@ -86,7 +86,7 @@ impl<T: serde::Serialize+Clone> MetaData<T> {
         }
     }
 
-    pub async unsafe fn broadcast(self) {
+    pub async unsafe fn broadcast(self, endpoint: String) {
         let mut notified_random_peers: Vec<Node> = vec![];
         let mut random_peers_successfully_notified = 0;
         let n_random_peers: i32 = if super::node::NODE_LIST.len() > 8 {
@@ -99,41 +99,41 @@ impl<T: serde::Serialize+Clone> MetaData<T> {
 
         while (notified_random_peers.len() as i32) < n_random_peers && random_peers_successfully_notified < n_random_peers {
             let random_node_index = rand::Rng::gen_range(&mut rng, 0..super::node::NODE_LIST.len());
-            let random_node: &Node = &super::node::NODE_LIST[random_node_index];
-
-            if !notified_random_peers.contains(random_node) {
-                let registration_status = super::client::http_post_request_timeout(
-                    random_node.ip_address.to_owned(), 
-                    "/v".to_string() + &random_node.version + "/network/node",
-                    self_str.clone()
-                ).await;
-                let registration_status_unwrapped: String;
-
-                match registration_status {
-                    Ok(_) => {
-                        registration_status_unwrapped = registration_status.unwrap();
-                    }
-                    Err(e) => {
-                        println_debug!("{:#?}", e);
-                        break;
-                    }
-                }
-
-                let registration_status_json: Result<MetaData<super::route_handler::response::PostNode>, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
-
-                match registration_status_json {
-                    Ok(_) => {
-                        random_peers_successfully_notified += 1;
-                    }
-
-                    Err(e) => {
-                        println_debug!("{:#?}", e);
-                        break;
-                    }
-                }
-
-                notified_random_peers.push(random_node.to_owned());
+            let random_node = super::node::NODE_LIST[random_node_index].to_owned();
+    
+            if notified_random_peers.contains(&random_node) {
+                break;
             }
+    
+            let http_post_result = super::client::http_post_request_timeout(
+                random_node.ip_address.clone(), 
+                "/v".to_string() + &random_node.version + &endpoint,
+                self_str.clone()
+            ).await;
+            
+            let broadcast_status = match http_post_result {
+                Ok(result) => {
+                    result
+                },
+                Err(e) => {
+                    println_debug!("{:#?}", e);
+                    return
+                }
+            };
+    
+            let broadcast_status_json: T = match serde_json::from_str(&broadcast_status) {
+                Ok(result) => {
+                    result
+                },
+                Err(e) => {
+                    println_debug!("{:#?}", e);
+                    return;
+                }
+            };
+    
+            println_debug!("{:#?}", broadcast_status_json);
+    
+            notified_random_peers.push(random_node.to_owned());
         }
 
     }
@@ -153,11 +153,13 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
     let get_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network";
     let post_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network/node";
+    let post_tx_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/tx";
 
     let api_routes: Vec<Route> = vec![
         Route {path: &"/", method: &"GET", handler: get_info},
         Route {path: &get_nodes_path, method: &"GET", handler: get_nodes},
         Route {path: &post_nodes_path, method: &"POST", handler: post_node},
+        Route {path: &post_tx_path, method: &"POST", handler: post_tx},
     ];
 
     for route in api_routes.iter() {
@@ -273,6 +275,62 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
                 .body(Body::from(registration_body))
                 .expect("Failed to construct the response");
         }
+
+        return response;
+    })
+}
+
+fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+    Box::pin(async move {
+        let body = req.into_body();
+        let bytes = body::to_bytes(body).await.unwrap();
+        let data = String::from_utf8((&*bytes).to_vec());
+
+        let mut body = "400 - Malformed Request";
+        let mut response = Response::builder()
+            .header(CONTENT_LENGTH, body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .expect("Failed to construct the response");
+
+        let request_body_str: String;
+        match data {
+            Ok(_) => {
+                request_body_str = data.unwrap();
+            }
+            Err(_) => {
+                return response;
+            }
+        }
+
+        let request_body_json:Result<MetaData<super::super::blockchain::Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+        let mut new_tx: super::super::blockchain::Tx;
+        match request_body_json {
+            Ok(_) => {
+                if request_body_json.as_ref().unwrap().verify() {
+                    unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/tx".to_string()).await; };
+                    println_debug!("{:#?}", request_body_json);
+                    new_tx = request_body_json.unwrap().payload;
+                } else {
+                    return response;
+                }
+            },
+            Err(_) => {
+                return response;
+            },
+        }
+
+        // unsafe {
+        //     let register_success = new_node.register().await;
+
+        //     let registration_body= MetaData::new(response::PostNode{status: register_success}).to_string();
+
+        //     response = Response::builder()
+        //         .header(CONTENT_LENGTH, registration_body.len() as u64)
+        //         .header(CONTENT_TYPE, "text/plain")
+        //         .body(Body::from(registration_body))
+        //         .expect("Failed to construct the response");
+        // }
 
         return response;
     })

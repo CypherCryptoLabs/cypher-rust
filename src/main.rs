@@ -3,6 +3,7 @@ mod debug;
 mod config;
 mod networking;
 mod crypto;
+mod blockchain;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]

@@ -15,7 +15,7 @@ pub static LOCAL_BLOCKCHAIN_ADDRESS: once_cell::sync::Lazy<String> = once_cell::
     
 });
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct Node {
     pub ip_address: String,
     pub blockchain_address: String,
@@ -23,7 +23,7 @@ pub struct Node {
     pub version: String
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct NodeInfo {
     pub node_name: String,
     pub node_version: String,
@@ -73,7 +73,7 @@ impl Node {
             tokio::spawn({
 
                 let node_metadata = super::route_handler::MetaData::new(self.clone());
-                node_metadata.broadcast()
+                node_metadata.broadcast("/network/node".to_string())
 
                 //node_clone.broadcast_registration()
             });

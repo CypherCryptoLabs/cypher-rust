@@ -17,10 +17,14 @@ run: $(TARGET)
 docker:
 	docker build -t $(TARGET) .
 
+docker-no-cache:
+	docker build --no-cache -t $(TARGET) .
+
 run-container-%:
 	if ! [ -d ./testnet_volumes/$(TARGET)-$* ]; then mkdir ./testnet_volumes/$(TARGET)-$*; fi
 
 	$(eval IP := $(shell echo $* + 1 | bc))
+	$(eval PORT := $(shell echo $* + 1233 | bc))
 	docker run --network cypher-testnet -v $(shell pwd)/testnet_volumes/$(TARGET)-$*:/data -d --name $(TARGET)-$* --ip 10.0.0.$(IP) -e CYPHER_EXTERNAL_IP=10.0.0.$(IP) -e CYPHER_SEED_IP=10.0.0.2 -e CYPHER_SEED_WALLET_ADDRESS=1N1o78bZ7d5LbAhZq1pcDVJkT3AYRRr5bC -e CYPHER_SEED_VERSION=0.1.0 $(TARGET)
 
 rm-container-%:

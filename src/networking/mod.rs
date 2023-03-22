@@ -57,7 +57,7 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         }
     }
 
-    let node_json_string: String = unsafe{route_handler::MetaData::new(local_node).to_string()};
+    let node_json_string: String = unsafe{route_handler::MetaData::new(local_node.clone()).to_string()};
 
     println_debug!("{:#?}", node_json_string);
 
