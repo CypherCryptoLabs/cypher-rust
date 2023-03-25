@@ -84,9 +84,7 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         Ok(_) => {
             let response = registration_status_json.unwrap();
             let status = response.verify() && response.payload.status;
-            return Ok(
-                return Ok(status)
-            );
+            return Ok(status);
         }
 
         Err(e) => {

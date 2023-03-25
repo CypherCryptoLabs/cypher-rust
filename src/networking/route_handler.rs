@@ -5,14 +5,10 @@ extern crate serde_json;
 pub mod response;
 pub mod request;
 
-use bitcoin::util::address::Payload;
-use futures_util::future::ok;
 use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
-use secp256k1::PublicKey;
 use std::convert::Infallible;
-use std::error::Error;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
@@ -126,6 +122,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
     
             let broadcast_status_json: T = match serde_json::from_str(&broadcast_status) {
                 Ok(result) => {
+                    random_peers_successfully_notified += 1;
                     result
                 },
                 Err(e) => {
@@ -235,7 +232,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         let bytes = body::to_bytes(body).await.unwrap();
         let data = String::from_utf8((&*bytes).to_vec());
 
-        let mut body = "400 - Malformed Request";
+        let body = "400 - Malformed Request";
         let mut response = Response::builder()
             .header(CONTENT_LENGTH, body.len() as u64)
             .header(CONTENT_TYPE, "text/plain")
@@ -308,13 +305,11 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
         }
 
         let request_body_json:Result<MetaData<Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
-        let mut new_tx: Tx;
         match request_body_json {
             Ok(_) => {
                 if request_body_json.as_ref().unwrap().verify() {
                     unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/blockchain/tx".to_string()).await; };
                     println_debug!("{:#?}", request_body_json);
-                    new_tx = request_body_json.unwrap().payload;
 
                     body = "{\"status\":true}";
                     response = Response::builder()

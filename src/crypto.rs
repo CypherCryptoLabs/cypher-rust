@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
-use bitcoin::{util::bip32::ExtendedPrivKey, secp256k1::{Message, ecdsa}, hashes::sha256};
+use bitcoin::{util::bip32::ExtendedPrivKey, secp256k1::ecdsa, hashes::sha256};
 use hex;
 
 pub static mut BLOCKCHAIN_ADDRESS: String = String::new();
@@ -99,7 +99,7 @@ pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> boo
     match result {
         Ok(_) => {return result.unwrap();},
         Err(e) => {
-            println_debug!("TEST");
+            println_debug!("{:#?}", e);
             return false;
         }
     }
