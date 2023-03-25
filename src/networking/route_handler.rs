@@ -3,6 +3,7 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod response;
+pub mod request;
 
 use bitcoin::util::address::Payload;
 use futures_util::future::ok;
@@ -16,7 +17,8 @@ use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
 
-use super::node::Node;
+use self::request::Node;
+use self::request::Tx;
 
 struct Route<'a> {
     path: &'a str,
@@ -250,7 +252,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
             }
         }
 
-        let request_body_json:Result<MetaData<super::node::Node>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+        let request_body_json:Result<MetaData<Node>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
         let mut new_node: Node;
         match request_body_json {
             Ok(_) => {
@@ -305,8 +307,8 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
             }
         }
 
-        let request_body_json:Result<MetaData<super::super::blockchain::Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
-        let mut new_tx: super::super::blockchain::Tx;
+        let request_body_json:Result<MetaData<Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
+        let mut new_tx: Tx;
         match request_body_json {
             Ok(_) => {
                 if request_body_json.as_ref().unwrap().verify() {
