@@ -120,16 +120,19 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 }
             };
     
-            let broadcast_status_json: T = match serde_json::from_str(&broadcast_status) {
+            let broadcast_status_json: MetaData<response::Broadcast> = match serde_json::from_str(&broadcast_status) {
                 Ok(result) => {
-                    random_peers_successfully_notified += 1;
                     result
                 },
                 Err(e) => {
-                    println_debug!("{:#?}", e);
+                    println_debug!("{:#?}\n{}", e, broadcast_status);
                     break;
                 }
             };
+
+            if broadcast_status_json.payload.status {
+                random_peers_successfully_notified += 1;
+            }
     
             println_debug!("{:#?}", broadcast_status_json);
     
@@ -267,7 +270,7 @@ fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> 
         unsafe {
             let register_success = new_node.register().await;
 
-            let registration_body= MetaData::new(response::PostNode{status: register_success}).to_string();
+            let registration_body= MetaData::new(response::Broadcast{status: register_success}).to_string();
 
             response = Response::builder()
                 .header(CONTENT_LENGTH, registration_body.len() as u64)
@@ -286,7 +289,7 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
         let bytes = body::to_bytes(body).await.unwrap();
         let data = String::from_utf8((&*bytes).to_vec());
 
-        let mut body = "400 - Malformed Request";
+        let body = "400 - Malformed Request";
         let mut response = Response::builder()
             .header(CONTENT_LENGTH, body.len() as u64)
             .header(CONTENT_TYPE, "text/plain")
@@ -311,11 +314,11 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
                     unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/blockchain/tx".to_string()).await; };
                     println_debug!("{:#?}", request_body_json);
 
-                    body = "{\"status\":true}";
+                    let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
                     response = Response::builder()
-                        .header(CONTENT_LENGTH, body.len() as u64)
+                        .header(CONTENT_LENGTH, new_body.len() as u64)
                         .header(CONTENT_TYPE, "text/plain")
-                        .body(Body::from(body))
+                        .body(Body::from(new_body))
                         .expect("Failed to construct the response");
                 } else {
                     return response;
@@ -326,18 +329,6 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
                 return response;
             },
         }
-
-        // unsafe {
-        //     let register_success = new_node.register().await;
-
-        //     let registration_body= MetaData::new(response::PostNode{status: register_success}).to_string();
-
-        //     response = Response::builder()
-        //         .header(CONTENT_LENGTH, registration_body.len() as u64)
-        //         .header(CONTENT_TYPE, "text/plain")
-        //         .body(Body::from(registration_body))
-        //         .expect("Failed to construct the response");
-        // }
 
         return response;
     })

@@ -14,6 +14,6 @@ pub struct GetNodes {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostNode {
+pub struct Broadcast {
     pub status: bool
 }

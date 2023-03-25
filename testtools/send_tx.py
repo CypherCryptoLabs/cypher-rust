@@ -38,12 +38,12 @@ print(json.dumps(body, separators=(',', ':')))
 response = requests.post("http://localhost:" + str(cypher.node_port) + "/v" + cypher.node_version + "/blockchain/tx", json.dumps(body, separators=(',', ':')))
 
 if response.status_code != 200:
-    print("Node did not accept body!")
+    print("Node rejected Tx")
     exit(1)
 
 print(response.text)
 if json.loads(response.text)["payload"]["status"] != False:
-    print("Node reregistered an existing Node!")
+    print("OK")
     exit(1)
 
 print("Tx sent")

@@ -78,7 +78,7 @@ pub async fn register_to_network(seed_node: &node::Node, local_node: &node::Node
         }
     }
 
-    let registration_status_json: Result<route_handler::MetaData<route_handler::response::PostNode>, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
+    let registration_status_json: Result<route_handler::MetaData<route_handler::response::Broadcast>, serde_json::Error> = serde_json::from_str(&registration_status_unwrapped);
 
     match registration_status_json {
         Ok(_) => {
