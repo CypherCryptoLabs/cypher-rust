@@ -95,6 +95,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
             super::node::NODE_LIST.len() as i32
         };
         let self_str = serde_json::to_string(&self).unwrap();
+        println_debug!("{:#?}", self_str);
         let mut rng = <::rand::rngs::StdRng as rand::SeedableRng>::from_seed(rand::Rng::gen(&mut rand::rngs::OsRng));
 
         while (notified_random_peers.len() as i32) < n_random_peers && random_peers_successfully_notified < n_random_peers {
@@ -117,7 +118,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 },
                 Err(e) => {
                     println_debug!("{:#?}", e);
-                    return
+                    break;
                 }
             };
     
@@ -127,7 +128,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 },
                 Err(e) => {
                     println_debug!("{:#?}", e);
-                    return;
+                    break;
                 }
             };
     
@@ -298,7 +299,8 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
             Ok(_) => {
                 request_body_str = data.unwrap();
             }
-            Err(_) => {
+            Err(e) => {
+                println_debug!("{:#?}", e);
                 return response;
             }
         }
@@ -308,14 +310,22 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
         match request_body_json {
             Ok(_) => {
                 if request_body_json.as_ref().unwrap().verify() {
-                    unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/tx".to_string()).await; };
+                    unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/blockchain/tx".to_string()).await; };
                     println_debug!("{:#?}", request_body_json);
                     new_tx = request_body_json.unwrap().payload;
+
+                    body = "{\"status\":true}";
+                    response = Response::builder()
+                        .header(CONTENT_LENGTH, body.len() as u64)
+                        .header(CONTENT_TYPE, "text/plain")
+                        .body(Body::from(body))
+                        .expect("Failed to construct the response");
                 } else {
                     return response;
                 }
             },
-            Err(_) => {
+            Err(e) => {
+                println_debug!("{:#?}", e);
                 return response;
             },
         }
