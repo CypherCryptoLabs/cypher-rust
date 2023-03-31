@@ -12,6 +12,7 @@ use std::convert::Infallible;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
+use super::super::transaction_queue;
 
 use self::request::Node;
 use self::request::Tx;
@@ -309,10 +310,14 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
 
         let request_body_json:Result<MetaData<Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
         match request_body_json {
-            Ok(_) => {
-                if request_body_json.as_ref().unwrap().verify() {
-                    unsafe { request_body_json.as_ref().unwrap().clone().broadcast("/blockchain/tx".to_string()).await; };
-                    println_debug!("{:#?}", request_body_json);
+            Ok(request_body_json_unwrapped) => {
+                if request_body_json_unwrapped.verify() {
+                    unsafe { request_body_json_unwrapped.clone().broadcast("/blockchain/tx".to_string()).await; };
+                    println_debug!("{:#?}", request_body_json_unwrapped);
+
+                    println_debug!("{:#?}",transaction_queue::get(&request_body_json_unwrapped.payload.signature));
+                    println_debug!("{:#?}",transaction_queue::insert(&request_body_json_unwrapped.payload));
+                    unsafe {println_debug!("{:#?}",transaction_queue::TX_HASHMAP)};
 
                     let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
                     response = Response::builder()
