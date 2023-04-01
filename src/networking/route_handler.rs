@@ -9,6 +9,7 @@ use futures_util::{ Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Request, Response, Body, StatusCode, body};
 use std::convert::Infallible;
+use std::io::Bytes;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
@@ -126,7 +127,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                     result
                 },
                 Err(e) => {
-                    println_debug!("{:#?}\n{}", e, broadcast_status);
+                    println_debug!("[{}] {:#?}: {}", random_node.ip_address, e, broadcast_status);
                     break;
                 }
             };
@@ -233,7 +234,15 @@ fn get_nodes(_req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>>
 fn post_node(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
     Box::pin(async move {
         let body = req.into_body();
-        let bytes = body::to_bytes(body).await.unwrap();
+        let bytes = match body::to_bytes(body).await {
+            Ok(result) => {
+                result
+            },
+            Err(e) => {
+                println_debug!("{}", e);
+                hyper::body::Bytes::from("")
+            }
+        };
         let data = String::from_utf8((&*bytes).to_vec());
 
         let body = "400 - Malformed Request";
@@ -312,14 +321,21 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
         match request_body_json {
             Ok(request_body_json_unwrapped) => {
                 if request_body_json_unwrapped.verify() {
-                    unsafe { request_body_json_unwrapped.clone().broadcast("/blockchain/tx".to_string()).await; };
+
                     println_debug!("{:#?}", request_body_json_unwrapped);
 
-                    println_debug!("{:#?}",transaction_queue::get(&request_body_json_unwrapped.payload.signature));
-                    println_debug!("{:#?}",transaction_queue::insert(&request_body_json_unwrapped.payload));
-                    unsafe {println_debug!("{:#?}",transaction_queue::TX_HASHMAP)};
+                    let tx_is_not_known = transaction_queue::get(&request_body_json_unwrapped.payload.signature).is_none();
 
-                    let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
+                    if tx_is_not_known {
+                        transaction_queue::insert(&request_body_json_unwrapped.payload);
+                        unsafe {tokio::spawn({
+
+                            let request_body_json_unwrapped_clone = super::route_handler::MetaData::new(request_body_json_unwrapped.clone());
+                            request_body_json_unwrapped_clone.broadcast("/blockchain/tx".to_string())
+                        })};
+                    }
+
+                    let new_body: String = unsafe { MetaData::new(response::Broadcast{status: tx_is_not_known}).to_string() };
                     response = Response::builder()
                         .header(CONTENT_LENGTH, new_body.len() as u64)
                         .header(CONTENT_TYPE, "text/plain")
