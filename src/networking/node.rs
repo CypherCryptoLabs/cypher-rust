@@ -67,6 +67,7 @@ impl Node {
 
         if !ip_already_in_use && !blockchain_address_already_in_use {
             NODE_LIST.push(self.to_owned());
+            //println_debug!("{:#?}", NODE_LIST);
             
             tokio::spawn({
 

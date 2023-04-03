@@ -74,8 +74,6 @@ async fn main() {
                 std::process::exit(1);
             }
 
-            unsafe { println_debug!("{:#?}", networking::node::NODE_LIST); }
-
         }
         Err(e) => {
             println_debug!("{}", e);

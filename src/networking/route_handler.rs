@@ -13,6 +13,8 @@ use std::io::Bytes;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
+use crate::networking::node::{LOCAL_BLOCKCHAIN_ADDRESS, NODE_LIST};
+
 use super::super::transaction_queue;
 
 use self::request::Node;
@@ -95,17 +97,24 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
             super::node::NODE_LIST.len() as i32
         };
         let self_str = serde_json::to_string(&self).unwrap();
-        println_debug!("{:#?}", self_str);
         let mut rng = <::rand::rngs::StdRng as rand::SeedableRng>::from_seed(rand::Rng::gen(&mut rand::rngs::OsRng));
+
+        println_debug!("{}", self_str);
+        println_debug!("{}", n_random_peers);
+
+        let local_node = NODE_LIST.iter().find(|s| s.blockchain_address.eq(&LOCAL_BLOCKCHAIN_ADDRESS.to_string())).unwrap();
+        notified_random_peers.push(local_node.to_owned());
 
         while (notified_random_peers.len() as i32) < n_random_peers && random_peers_successfully_notified < n_random_peers {
             let random_node_index = rand::Rng::gen_range(&mut rng, 0..super::node::NODE_LIST.len());
             let random_node = super::node::NODE_LIST[random_node_index].to_owned();
     
             if notified_random_peers.contains(&random_node) {
-                break;
+                continue;
             }
-    
+            
+            println_debug!("sending packet to {}", random_node.ip_address);
+            notified_random_peers.push(random_node.to_owned());
             let http_post_result = super::client::http_post_request_timeout(
                 random_node.ip_address.clone(), 
                 "/v".to_string() + &random_node.version + &endpoint,
@@ -118,7 +127,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 },
                 Err(e) => {
                     println_debug!("{:#?}", e);
-                    break;
+                    continue;
                 }
             };
     
@@ -128,7 +137,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 },
                 Err(e) => {
                     println_debug!("[{}] {:#?}: {}", random_node.ip_address, e, broadcast_status);
-                    break;
+                    continue;
                 }
             };
 
@@ -136,10 +145,9 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
                 random_peers_successfully_notified += 1;
             }
     
-            println_debug!("{:#?}", broadcast_status_json);
-    
-            notified_random_peers.push(random_node.to_owned());
         }
+
+        println_debug!("{:#?}", notified_random_peers);
 
     }
 
@@ -322,7 +330,7 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
             Ok(request_body_json_unwrapped) => {
                 if request_body_json_unwrapped.verify() {
 
-                    println_debug!("{:#?}", request_body_json_unwrapped);
+                    println_debug!("{}", request_body_str);
 
                     let tx_is_not_known = transaction_queue::get(&request_body_json_unwrapped.payload.signature).is_none();
 
@@ -330,7 +338,7 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
                         transaction_queue::insert(&request_body_json_unwrapped.payload);
                         unsafe {tokio::spawn({
 
-                            let request_body_json_unwrapped_clone = super::route_handler::MetaData::new(request_body_json_unwrapped.clone());
+                            let request_body_json_unwrapped_clone = request_body_json_unwrapped.clone();
                             request_body_json_unwrapped_clone.broadcast("/blockchain/tx".to_string())
                         })};
                     }
@@ -346,7 +354,7 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
                 }
             },
             Err(e) => {
-                println_debug!("{:#?}", e);
+                println_debug!("{:#?}\n{}", e, request_body_str);
                 return response;
             },
         }
