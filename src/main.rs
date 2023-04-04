@@ -5,6 +5,7 @@ mod networking;
 mod crypto;
 mod blockchain;
 mod transaction_queue;
+mod queue_worker;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
@@ -12,6 +13,8 @@ async fn main() {
     config::load();
     crypto::init();
     transaction_queue::init();
+    queue_worker::init();
+    
     tokio::task::spawn_blocking(|| {networking::start_http_server()});
     println_debug!("Node listening to {}:1234", config::IP_ADDRESS.to_string());
     tokio::time::sleep(std::time::Duration::from_millis(250)).await;
