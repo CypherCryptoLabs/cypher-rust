@@ -19,7 +19,6 @@ pub fn init() {
                 transactions.sort_unstable_by(|a, b| b.network_fee.cmp(&a.network_fee));
                 let transactions_for_block: Vec<Tx> = transactions.into_iter().take(100).collect();
                 println_debug!("{:#?}", transactions_for_block);
-
             };
 
             println_debug!("{}", SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_millis() as u64);

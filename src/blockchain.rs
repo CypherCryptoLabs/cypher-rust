@@ -11,3 +11,12 @@ pub struct Tx {
     pub timestamp: u64,
     pub signature: String
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+pub struct Block {
+    pub timestamp: u64,
+    pub forger: String,
+    pub payload: Vec<Tx>,
+    pub forger_signature: String,
+    pub validators: Vec<(String, String)> 
+}
