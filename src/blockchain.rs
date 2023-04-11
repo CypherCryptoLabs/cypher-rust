@@ -20,6 +20,7 @@ pub struct Tx {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 pub struct Block {
     pub timestamp: u64,
+    pub parent_block_hash: String,
     pub forger: String,
     pub payload: Vec<Tx>,
     pub forger_signature: String,
@@ -35,6 +36,7 @@ impl Block {
             payload: tx,
             forger_signature: "".to_string(),
             validators: vec![],
+            parent_block_hash: "".to_string(),
         };
 
         let block_json = match serde_json::to_string(&temp_block.clone()) {
