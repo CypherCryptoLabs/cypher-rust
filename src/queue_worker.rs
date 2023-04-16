@@ -28,23 +28,32 @@ pub fn init() {
 
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
 
-            println_debug!("{:#?}{:#?}", forger, validators);
+            println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
 
-            let transactions_for_block: Vec<blockchain::Tx>;
-            unsafe { 
-                let mut transactions: Vec<blockchain::Tx> = transaction_queue::TX_HASHMAP.as_mut().unwrap().values().cloned().collect();
-                transactions.sort_unstable_by(|a, b| b.network_fee.cmp(&a.network_fee));
-                transactions_for_block= transactions.into_iter().take(100).collect();
-                println_debug!("{:#?}", transactions_for_block);
-            };
 
-            let block = blockchain::Block::new(transactions_for_block);
-            if block.timestamp == 0 {
-                println_debug!("Block could not be created, skipping current iteration!");
-                continue;
+
+            if super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string() == forger.blockchain_address {
+                println_debug!("This node is the forger for the current slot!");
+                let transactions_for_block: Vec<blockchain::Tx>;
+                unsafe { 
+                    let mut transactions: Vec<blockchain::Tx> = transaction_queue::TX_HASHMAP.as_mut().unwrap().values().cloned().collect();
+                    transactions.sort_unstable_by(|a, b| b.network_fee.cmp(&a.network_fee));
+                    transactions_for_block= transactions.into_iter().take(100).collect();
+                    println_debug!("{:#?}", transactions_for_block);
+                };
+
+                let block = blockchain::Block::new(transactions_for_block);
+                if block.timestamp == 0 {
+                    println_debug!("Block could not be created, skipping current iteration!");
+                    continue;
+                }
+
+                println_debug!("{:#?}", block);
+            } else if validators.iter().any(|n| n.blockchain_address == super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) {
+                println_debug!("This node is a validator for the current slot!");
+            } else {
+                println_debug!("This node is inactive for the current slot!");
             }
-
-            println_debug!("{:#?}", block);
         }
     });
 }
