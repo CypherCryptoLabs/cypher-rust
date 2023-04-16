@@ -19,11 +19,16 @@ pub fn init() {
             let sleep_timer = next_voting_slot - now;
 
             thread::sleep(Duration::from_millis(sleep_timer));
+            let mut node_list_copy = unsafe { node::NODE_LIST.clone() };
 
-            let forger = match select_forger(next_voting_slot) {
+            let forger = match select_forger(next_voting_slot, node_list_copy.clone()) {
                 Some(forger) => forger,
                 None => continue,
             };
+
+            let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
+
+            println_debug!("{:#?}{:#?}", forger, validators);
 
             let transactions_for_block: Vec<blockchain::Tx>;
             unsafe { 
@@ -44,8 +49,7 @@ pub fn init() {
     });
 }
 
-fn select_forger(next_voting_slot: u64) -> Option<Node> {
-    let node_list_copy = unsafe { node::NODE_LIST.clone() };
+fn select_forger(next_voting_slot: u64 , node_list_copy: Vec<Node>) -> Option<Node> {
     let mut node_hashmap: HashMap<String, String> = HashMap::new();
     let forger: node::Node;
     let node_address_hashes_vec: Vec<&String>;
@@ -84,7 +88,19 @@ fn select_forger(next_voting_slot: u64) -> Option<Node> {
         None => {return None;},
     };
 
-    println_debug!("Forger: {:#?}\nTarget POR: {}\nPool: {:#?}", forger, target_por, node_hashmap);
-
     return Some(forger);
+}
+
+fn select_validators(mut node_list: Vec<Node>, forger_address: String) -> Vec<Node>{
+    let max_validators = 128; // the maximum number of validators for each slot
+    let max_available_validators = node_list.len();
+
+    if max_available_validators < max_validators {
+        // return the node list without the forger
+        node_list.retain(|x| x.blockchain_address != forger_address);
+        return node_list;
+    } else {
+        // select validators
+        todo!()
+    }
 }
