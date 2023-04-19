@@ -1,6 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
+use node::Node;
 use crate::networking::node::LOCAL_BLOCKCHAIN_ADDRESS;
-
+use crate::networking;
 use super::networking::node;
 
 extern crate serde;
@@ -53,5 +54,26 @@ impl Block {
         temp_block.forger_signature = super::crypto::sign_string(&block_json);
         return temp_block;
         
+    }
+
+    pub async fn broadcast_to_validators(&self, validators: Vec<Node>) {
+        let metadata_wrapped_block = unsafe { networking::route_handler::MetaData::new(self.to_owned()) };
+        let json_metadata_block = match serde_json::to_string(&metadata_wrapped_block) {
+            Ok(json) => json,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return;
+            },
+        };
+
+        for node in validators {
+            let result = networking::client::http_post_request_timeout(
+                node.ip_address,
+                "/v".to_string() + &node.version + "/blockchain/propose",
+                json_metadata_block.to_string(),
+            ).await;
+
+            println_debug!("{:#?}", result);
+        }
     }
 }

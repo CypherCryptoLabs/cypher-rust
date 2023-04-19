@@ -2,8 +2,8 @@ extern crate hyper;
 extern crate serde;
 extern crate serde_json;
 
-mod route_handler;
-mod client;
+pub(crate) mod route_handler;
+pub mod client;
 pub mod node;
 
 use hyper::{service::{ make_service_fn, service_fn}, Server};

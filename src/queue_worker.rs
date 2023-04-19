@@ -4,7 +4,8 @@ use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crypto_hash::{hex_digest, Algorithm};
 use num_bigint::BigUint;
-use num_traits::{Zero, Num};
+use num_traits::Num;
+use tokio::runtime::Runtime;
 
 use crate::blockchain;
 use crate::networking::node::{self, Node};
@@ -13,13 +14,14 @@ use super::transaction_queue;
 
 pub fn init() {
     thread::spawn(|| {
+        let rt = Runtime::new().unwrap();
         loop {
             let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
             let next_voting_slot = now - (now % 60000) + 60000;
             let sleep_timer = next_voting_slot - now;
 
             thread::sleep(Duration::from_millis(sleep_timer));
-            let mut node_list_copy = unsafe { node::NODE_LIST.clone() };
+            let node_list_copy = unsafe { node::NODE_LIST.clone() };
 
             let forger = match select_forger(next_voting_slot, node_list_copy.clone()) {
                 Some(forger) => forger,
@@ -29,8 +31,6 @@ pub fn init() {
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
 
             println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
-
-
 
             if super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string() == forger.blockchain_address {
                 println_debug!("This node is the forger for the current slot!");
@@ -48,6 +48,11 @@ pub fn init() {
                     continue;
                 }
 
+                let cloned_block = block.clone();
+                rt.spawn(async move {
+                    cloned_block.broadcast_to_validators(validators).await;
+                });
+
                 println_debug!("{:#?}", block);
             } else if validators.iter().any(|n| n.blockchain_address == super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) {
                 println_debug!("This node is a validator for the current slot!");
@@ -56,6 +61,7 @@ pub fn init() {
             }
         }
     });
+    
 }
 
 fn select_forger(next_voting_slot: u64 , node_list_copy: Vec<Node>) -> Option<Node> {

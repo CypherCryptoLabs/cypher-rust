@@ -12,6 +12,7 @@ use std::convert::Infallible;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
 use hex;
+use crate::blockchain::Block;
 use crate::networking::node::{LOCAL_BLOCKCHAIN_ADDRESS, NODE_LIST};
 
 use super::super::transaction_queue;
@@ -166,12 +167,14 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let get_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network";
     let post_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network/node";
     let post_tx_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/tx";
+    let post_block_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/propose";
 
     let api_routes: Vec<Route> = vec![
         Route {path: &"/", method: &"GET", handler: get_info},
         Route {path: &get_nodes_path, method: &"GET", handler: get_nodes},
         Route {path: &post_nodes_path, method: &"POST", handler: post_node},
         Route {path: &post_tx_path, method: &"POST", handler: post_tx},
+        Route {path: &post_block_path, method: &"POST", handler: post_block_propose},
     ];
 
     for route in api_routes.iter() {
@@ -357,6 +360,45 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
                 return response;
             },
         }
+
+        return response;
+    })
+}
+
+fn post_block_propose(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+    Box::pin(async move {
+        let body = req.into_body();
+        let bytes = body::to_bytes(body).await.unwrap();
+        let data = String::from_utf8((&*bytes).to_vec());
+
+        let body = "400 - Malformed Request";
+        let response = Response::builder()
+            .header(CONTENT_LENGTH, body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .expect("Failed to construct the response");
+
+        let request_body_str: String = match data {
+            Ok(data) => {
+                data
+            }
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            }
+        };
+
+        let request_body_json:MetaData<Block> = match serde_json::from_str(request_body_str.as_str()) {
+            Ok(data) => {
+                data
+            },
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            },
+        };
+
+        println_debug!("{:#?}", request_body_json);
 
         return response;
     })
