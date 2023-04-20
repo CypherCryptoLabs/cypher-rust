@@ -7,10 +7,19 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use tokio::runtime::Runtime;
 
-use crate::blockchain;
+use crate::blockchain::{self, Block};
 use crate::networking::node::{self, Node};
 
 use super::transaction_queue;
+
+pub static mut CURRENT_PROPOSED_BLOCK: Block = Block { 
+    timestamp: 0, 
+    parent_block_hash: String::new(), 
+    forger: String::new(), 
+    payload: vec![], 
+    forger_signature: String::new(), 
+    validators: vec![] 
+};
 
 pub fn init() {
     thread::spawn(|| {
@@ -21,19 +30,31 @@ pub fn init() {
             let sleep_timer = next_voting_slot - now;
 
             thread::sleep(Duration::from_millis(sleep_timer));
-            let node_list_copy = unsafe { node::NODE_LIST.clone() };
+            unsafe { CURRENT_PROPOSED_BLOCK = Block { 
+                timestamp: 0, 
+                parent_block_hash: String::new(), 
+                forger: String::new(), 
+                payload: vec![], 
+                forger_signature: String::new(), 
+                validators: vec![] 
+            }};
 
+            let node_list_copy = unsafe { node::NODE_LIST.clone() };
             let forger = match select_forger(next_voting_slot, node_list_copy.clone()) {
                 Some(forger) => forger,
                 None => continue,
             };
-
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
 
             println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
+            unsafe { 
+                super::networking::CURRENT_FORGER_ADDRESS = forger.blockchain_address.clone();
+                super::networking::CURRENT_VALIDATORS = validators.clone();
+            };
 
             if super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string() == forger.blockchain_address {
                 println_debug!("This node is the forger for the current slot!");
+
                 let transactions_for_block: Vec<blockchain::Tx>;
                 unsafe { 
                     let mut transactions: Vec<blockchain::Tx> = transaction_queue::TX_HASHMAP.as_mut().unwrap().values().cloned().collect();
@@ -42,18 +63,21 @@ pub fn init() {
                     println_debug!("{:#?}", transactions_for_block);
                 };
 
-                let block = blockchain::Block::new(transactions_for_block);
-                if block.timestamp == 0 {
-                    println_debug!("Block could not be created, skipping current iteration!");
-                    continue;
+                unsafe { 
+                    CURRENT_PROPOSED_BLOCK = blockchain::Block::new(transactions_for_block) ;
+                    if CURRENT_PROPOSED_BLOCK.timestamp == 0 {
+                        println_debug!("Block could not be created, skipping current iteration!");
+                        continue;
+                    }
+
+                    let cloned_block = CURRENT_PROPOSED_BLOCK.clone();
+                    rt.spawn(async move {
+                        cloned_block.broadcast_to_validators(validators).await;
+                    });
+
+                    println_debug!("{:#?}", CURRENT_PROPOSED_BLOCK);
                 }
 
-                let cloned_block = block.clone();
-                rt.spawn(async move {
-                    cloned_block.broadcast_to_validators(validators).await;
-                });
-
-                println_debug!("{:#?}", block);
             } else if validators.iter().any(|n| n.blockchain_address == super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) {
                 println_debug!("This node is a validator for the current slot!");
             } else {

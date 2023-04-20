@@ -372,11 +372,17 @@ fn post_block_propose(req: Request<Body>) -> Pin<Box<dyn Future<Output = Respons
         let data = String::from_utf8((&*bytes).to_vec());
 
         let body = "400 - Malformed Request";
-        let response = Response::builder()
+        let mut response = Response::builder()
             .header(CONTENT_LENGTH, body.len() as u64)
             .header(CONTENT_TYPE, "text/plain")
             .body(Body::from(body))
             .expect("Failed to construct the response");
+
+        if unsafe { 
+            super::CURRENT_VALIDATORS.iter().all(|n| n.blockchain_address != super::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) 
+        } {
+            return response;
+        }
 
         let request_body_str: String = match data {
             Ok(data) => {
@@ -398,7 +404,31 @@ fn post_block_propose(req: Request<Body>) -> Pin<Box<dyn Future<Output = Respons
             },
         };
 
-        println_debug!("{:#?}", request_body_json);
+        let proposed_block = request_body_json.payload;
+
+        if unsafe { super::super::queue_worker::CURRENT_PROPOSED_BLOCK.forger_signature == proposed_block.forger_signature} {
+            let new_body: String = unsafe { MetaData::new(response::Broadcast{status: false}).to_string() };
+            response = Response::builder()
+                .header(CONTENT_LENGTH, new_body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(new_body))
+                .expect("Failed to construct the response");
+
+            return response;
+        }
+        
+        unsafe { super::super::queue_worker::CURRENT_PROPOSED_BLOCK = proposed_block.clone() };
+
+        tokio::spawn(async move {
+            proposed_block.broadcast_to_validators(unsafe { super::CURRENT_VALIDATORS.clone() }).await;
+        });
+
+        let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
+        response = Response::builder()
+            .header(CONTENT_LENGTH, new_body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(new_body))
+            .expect("Failed to construct the response");
 
         return response;
     })

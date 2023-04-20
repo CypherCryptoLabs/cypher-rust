@@ -10,6 +10,9 @@ use hyper::{service::{ make_service_fn, service_fn}, Server};
 use std::{convert::Infallible, io::{Error, ErrorKind}};
 use tokio;
 
+pub static mut CURRENT_FORGER_ADDRESS: String = String::new();
+pub static mut CURRENT_VALIDATORS: Vec<node::Node> = vec![];
+
 #[tokio::main]
 pub async fn start_http_server() {
 
