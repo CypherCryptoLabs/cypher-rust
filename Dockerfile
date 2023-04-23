@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM mariadb:latest
 USER root
 
 RUN apt update && apt upgrade -y
@@ -11,4 +11,8 @@ RUN pip install -r /cypher/testtools/requirements.txt
 RUN cp /cypher/docker/openssl.cnf /usr/lib/ssl/openssl.cnf
 RUN mkdir /data
 
-CMD ["/bin/sh", "-c", "/cypher/target/debug/cypher-rust > /data/log.txt 2>&1"]
+ENV MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true
+COPY docker/db_schema.sql /docker-entrypoint-initdb.d/
+RUN chmod u+x /cypher/docker/start.sh
+
+CMD ["/cypher/docker/start.sh"]

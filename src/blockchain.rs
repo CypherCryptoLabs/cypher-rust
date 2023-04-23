@@ -76,4 +76,8 @@ impl Block {
             println_debug!("{:#?}", result);
         }
     }
+
+    pub fn validate(&self) -> bool {
+
+    }
 }
