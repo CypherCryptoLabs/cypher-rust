@@ -433,3 +433,7 @@ fn post_block_propose(req: Request<Body>) -> Pin<Box<dyn Future<Output = Respons
         return response;
     })
 }
+
+fn post_block_vouch(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+    todo!()
+}

@@ -25,11 +25,13 @@ pub struct Block {
     pub forger: String,
     pub payload: Vec<Tx>,
     pub forger_signature: String,
-    pub validators: Vec<(String, String)> 
+    pub validators: Vec<Vouch> 
 }
 
 impl Block {
-    pub fn new(tx: Vec<Tx>) -> Block {
+    pub fn new(tx: Vec<Tx>, validators: Vec<String>) -> Block {
+        println_debug!("{:#?}", validators);
+
         let mut temp_block =  Block {
             timestamp: SystemTime::now().duration_since(UNIX_EPOCH)
             .expect("Time went backwards").as_millis() as u64,
@@ -39,6 +41,10 @@ impl Block {
             validators: vec![],
             parent_block_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
         };
+
+        validators.iter().for_each(|address| {
+            temp_block.validators.push(Vouch::new(address));
+        });
 
         let block_json = match serde_json::to_string(&temp_block.clone()) {
             Ok(json) => {
@@ -78,6 +84,45 @@ impl Block {
     }
 
     pub fn validate(&self) -> bool {
+        return true;
+    }
 
+    pub fn vouch(&self) -> String {
+        let mut block_clone = self.clone();
+        block_clone.validators.iter().for_each(|vouch| {
+            vouch.signature.to_owned();
+            vouch.signature = "".to_string();
+        });
+
+        let block_json = match serde_json::to_string(&block_clone.clone()) {
+            Ok(json) => {
+                json
+            },
+            Err(e) => {
+                println_debug!("{}", e);
+                block_clone.timestamp = 0;
+                "".to_string()
+            }
+        };
+
+        return "".to_string();
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+
+pub struct Vouch {
+    address: String,
+    signature: String
+}
+
+impl Vouch {
+    pub fn new(address: &String) -> Vouch {
+        let vouch = Vouch {
+            address: address.to_string(),
+            signature: "".to_string()
+        };
+
+        return vouch;
     }
 }

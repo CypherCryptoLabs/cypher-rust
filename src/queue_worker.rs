@@ -45,6 +45,7 @@ pub fn init() {
                 None => continue,
             };
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
+            let validator_addresses = validators.iter().map(|node| node.blockchain_address.clone()).collect();
 
             println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
             unsafe { 
@@ -64,7 +65,7 @@ pub fn init() {
                 };
 
                 unsafe { 
-                    CURRENT_PROPOSED_BLOCK = blockchain::Block::new(transactions_for_block) ;
+                    CURRENT_PROPOSED_BLOCK = blockchain::Block::new(transactions_for_block, validator_addresses) ;
                     if CURRENT_PROPOSED_BLOCK.timestamp == 0 {
                         println_debug!("Block could not be created, skipping current iteration!");
                         continue;
@@ -80,6 +81,16 @@ pub fn init() {
 
             } else if validators.iter().any(|n| n.blockchain_address == super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) {
                 println_debug!("This node is a validator for the current slot!");
+                thread::sleep(Duration::from_millis(5000));
+
+                // everyone should have received a copy of the proposed Block by now
+                if unsafe { CURRENT_PROPOSED_BLOCK.timestamp } == 0 {
+                    println_debug!("Expected to receive Block, but received none (Invalid?). Skipping vouching/voting");
+                    continue;
+                }
+
+
+
             } else {
                 println_debug!("This node is inactive for the current slot!");
             }
