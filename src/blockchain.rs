@@ -1,5 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use node::Node;
+use regex::Regex;
 use crate::networking::node::LOCAL_BLOCKCHAIN_ADDRESS;
 use crate::networking;
 use super::networking::node;
@@ -16,6 +17,52 @@ pub struct Tx {
     pub receiver_address: String,
     pub timestamp: u64,
     pub signature: String
+}
+
+impl Tx {
+    pub fn is_valid(&self) -> bool{
+        // check if receiver address is valid
+        if !Regex::new(r"^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$")
+                .unwrap()
+                .is_match(&self.receiver_address)
+        {
+            return false;
+        }
+
+        // check if sendder pub key is valid
+        let secp_pub_key = match super::crypto::string_to_pub_key(&self.sender_pub_key) {
+            Some(key) => key,
+            None => {return false;}
+        };
+        let sender_address = super::crypto::pub_key_to_address(&secp_pub_key);
+
+        if !Regex::new(r"^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$")
+                .unwrap()
+                .is_match(&sender_address)
+        {
+            return false
+        }
+
+        // TODO: implement a balance check for sender
+
+        // check if signature is valid
+
+        let mut tx_cpy = self.clone();
+        tx_cpy.signature = "".to_string();
+
+        let tx_string = match serde_json::to_string(&tx_cpy) {
+            Ok(string) => string,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return false;
+            }
+        };
+
+        let signature_is_valid = super::crypto::verify_signature(self.signature.as_str(), tx_string.as_str(), &self.sender_pub_key);
+        println_debug!("Signature is valid: {}", signature_is_valid);
+
+        return true;
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
@@ -84,13 +131,19 @@ impl Block {
     }
 
     pub fn validate(&self) -> bool {
-        return true;
+        let mut tx_are_valid = true;
+        self.payload.iter().for_each(|tx| {
+            if !tx.is_valid() {
+                tx_are_valid = false;
+            }
+        });
+
+        return tx_are_valid;
     }
 
     pub fn vouch(&self) -> String {
         let mut block_clone = self.clone();
-        block_clone.validators.iter().for_each(|vouch| {
-            vouch.signature.to_owned();
+        block_clone.validators.iter_mut().for_each(|vouch| {
             vouch.signature = "".to_string();
         });
 

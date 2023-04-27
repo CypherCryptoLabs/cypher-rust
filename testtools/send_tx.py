@@ -24,7 +24,8 @@ body = {
         "network_fee": 1,
         "sender_pub_key": crypto_tools.get_pub_key().serialize(False).hex(),
         "receiver_address": crypto_tools.get_address(),
-        "timestamp": int(time.time() * 1000)
+        "timestamp": int(time.time() * 1000),
+        "signature": ""
     },
     "timestamp" : int(time.time() * 1000),
     "public_key" : crypto_tools.get_pub_key().serialize(False).hex()

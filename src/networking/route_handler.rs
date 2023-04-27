@@ -330,7 +330,9 @@ fn post_tx(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + 
         let request_body_json:Result<MetaData<Tx>, serde_json::Error> = serde_json::from_str(request_body_str.as_str());
         match request_body_json {
             Ok(request_body_json_unwrapped) => {
-                if request_body_json_unwrapped.verify() {
+                if request_body_json_unwrapped.verify() &&
+                super::super::blockchain::Tx::is_valid(&request_body_json_unwrapped.payload)
+                {
 
                     println_debug!("{}", request_body_str);
 

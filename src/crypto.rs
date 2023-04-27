@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bip39::{Mnemonic, MnemonicType, Language, Seed};
-use bitcoin::{util::bip32::ExtendedPrivKey, secp256k1::ecdsa, hashes::sha256};
+use bitcoin::{util::bip32::ExtendedPrivKey, secp256k1::ecdsa, hashes::sha256, PublicKey};
 use hex;
 
 pub static mut BLOCKCHAIN_ADDRESS: String = String::new();
@@ -103,4 +103,21 @@ pub fn verify_signature(signature: &str, message: &str, public_key: &str) -> boo
             return false;
         }
     }
+}
+
+pub fn string_to_pub_key(pub_key_string: &String) -> Option<PublicKey> {
+    let secp_public_key: PublicKey = match PublicKey::from_str(pub_key_string) {
+        Ok(key) => key,
+        Err(e) => {
+            println_debug!("{:#?}", e);
+            return None;
+        }
+    };
+
+    return Some(secp_public_key);
+}
+
+pub fn pub_key_to_address(pub_key: &PublicKey) -> String {
+    let address = bitcoin::Address::p2pkh(pub_key, bitcoin::Network::Bitcoin);
+    return address.to_string();
 }
