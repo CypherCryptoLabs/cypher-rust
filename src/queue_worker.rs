@@ -18,6 +18,7 @@ pub static mut CURRENT_PROPOSED_BLOCK: Block = Block {
     forger: String::new(), 
     payload: vec![], 
     forger_signature: String::new(), 
+    forger_pub_key: String::new(),
     validators: vec![] 
 };
 
@@ -35,7 +36,8 @@ pub fn init() {
                 parent_block_hash: String::new(), 
                 forger: String::new(), 
                 payload: vec![], 
-                forger_signature: String::new(), 
+                forger_signature: String::new(),
+                forger_pub_key: String::new(),
                 validators: vec![] 
             }};
 
@@ -81,6 +83,7 @@ pub fn init() {
 
             } else if validators.iter().any(|n| n.blockchain_address == super::networking::node::LOCAL_BLOCKCHAIN_ADDRESS.to_string()) {
                 println_debug!("This node is a validator for the current slot!");
+                // wait 5 seconds, every validator should receive a copy of the proposed Block
                 thread::sleep(Duration::from_millis(5000));
 
                 // everyone should have received a copy of the proposed Block by now
@@ -89,7 +92,10 @@ pub fn init() {
                     continue;
                 }
 
-
+                if !unsafe { CURRENT_PROPOSED_BLOCK.is_valid(&forger, validator_addresses) } {
+                    println_debug!("Proposed Block was invalid. Skipping vouching/voting.");
+                    continue;
+                }
 
             } else {
                 println_debug!("This node is inactive for the current slot!");

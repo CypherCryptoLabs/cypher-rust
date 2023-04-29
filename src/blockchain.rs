@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use node::Node;
 use regex::Regex;
 use crate::networking::node::LOCAL_BLOCKCHAIN_ADDRESS;
-use crate::networking;
+use crate::{networking, crypto};
 use super::networking::node;
 
 extern crate serde;
@@ -72,6 +72,7 @@ pub struct Block {
     pub forger: String,
     pub payload: Vec<Tx>,
     pub forger_signature: String,
+    pub forger_pub_key: String,
     pub validators: Vec<Vouch> 
 }
 
@@ -85,6 +86,7 @@ impl Block {
             forger: LOCAL_BLOCKCHAIN_ADDRESS.to_string(),
             payload: tx,
             forger_signature: "".to_string(),
+            forger_pub_key: hex::encode(unsafe { &super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec() }),
             validators: vec![],
             parent_block_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
         };
@@ -130,15 +132,67 @@ impl Block {
         }
     }
 
-    pub fn validate(&self) -> bool {
-        let mut tx_are_valid = true;
-        self.payload.iter().for_each(|tx| {
-            if !tx.is_valid() {
-                tx_are_valid = false;
-            }
-        });
+    pub fn is_valid(&self, forger: &Node, validators: Vec<String>) -> bool {
+        // check if previous Block Hash is correct (hardcoded until Block storage is implemented)
+        if self.parent_block_hash != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string() {
+            println_debug!("1");
+            return false;
+        }
 
-        return tx_are_valid;
+        // check if ty are valid
+        if !self.payload.iter().all(|tx| tx.is_valid()) {
+            println_debug!("2");
+            return false;
+        }
+
+        // check if forger and forger signature are valid
+        if self.forger != forger.blockchain_address {
+            println_debug!("3");
+            return false;
+        }
+
+        let mut block_cpy = self.clone();
+        block_cpy.forger_signature = "".to_string();
+
+        let block_json = match serde_json::to_string(&block_cpy.clone()) {
+            Ok(json) => {
+                json
+            },
+            Err(e) => {
+                println_debug!("{}", e);
+                println_debug!("4");
+                return false;
+            }
+        };
+
+        if !crypto::verify_signature(self.forger_signature.as_str(), block_json.as_str(), &self.forger_pub_key) {
+            println_debug!("5");
+            return false;
+        }
+
+        let forger_pub_key = match super::crypto::string_to_pub_key(&self.forger_pub_key) {
+            Some(pub_key) => pub_key,
+            None => {
+            println_debug!("6");
+                return false;
+            }
+        };
+        let forger_expected_address = super::crypto::pub_key_to_address(&forger_pub_key);
+
+        if self.forger != forger_expected_address {
+            println_debug!("7");
+            println_debug!("{}  {}", self.forger, forger_expected_address);
+            return false;
+        }
+
+        if !validators.iter().all(|address| {
+            self.validators.iter().any(|vouch| address.to_owned() == vouch.address)
+        }) {
+            println_debug!("8");
+            return false;
+        }
+
+        return true;
     }
 
     pub fn vouch(&self) -> String {
@@ -158,7 +212,7 @@ impl Block {
             }
         };
 
-        return "".to_string();
+        todo!();
     }
 }
 
