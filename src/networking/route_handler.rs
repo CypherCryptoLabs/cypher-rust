@@ -49,7 +49,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
 
     pub unsafe fn new(payload:T) -> MetaData<T> {
 
-        let public_key_string = hex::encode(&super::super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec());
+        let public_key_string = super::super::crypto::PUBLIC_KEY.unwrap().to_string();
         let data = MetaDataPreSignature {
             payload: payload,
             public_key: public_key_string,

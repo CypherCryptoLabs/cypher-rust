@@ -86,7 +86,7 @@ impl Block {
             forger: LOCAL_BLOCKCHAIN_ADDRESS.to_string(),
             payload: tx,
             forger_signature: "".to_string(),
-            forger_pub_key: hex::encode(unsafe { &super::crypto::PUBLIC_KEY.unwrap().serialize_uncompressed().to_vec() }),
+            forger_pub_key: unsafe {super::crypto::PUBLIC_KEY.unwrap().to_string()},
             validators: vec![],
             parent_block_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
         };
@@ -173,7 +173,7 @@ impl Block {
         let forger_pub_key = match super::crypto::string_to_pub_key(&self.forger_pub_key) {
             Some(pub_key) => pub_key,
             None => {
-            println_debug!("6");
+                println_debug!("6");
                 return false;
             }
         };
