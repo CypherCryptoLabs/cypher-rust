@@ -195,7 +195,7 @@ impl Block {
         return true;
     }
 
-    pub fn vouch(&self) -> String {
+    pub fn vouch(&self) -> Vouch {
         let mut block_clone = self.clone();
         block_clone.validators.iter_mut().for_each(|vouch| {
             vouch.signature = "".to_string();
@@ -212,7 +212,10 @@ impl Block {
             }
         };
 
-        todo!();
+        let mut vouch = Vouch::new(&LOCAL_BLOCKCHAIN_ADDRESS);
+        vouch.signature = crypto::sign_string(&block_json);
+
+        return vouch;
     }
 }
 
@@ -231,5 +234,26 @@ impl Vouch {
         };
 
         return vouch;
+    }
+
+    pub async fn broadcast_to_validators(&self, validators: Vec<Node>) {
+        let metadata_wrapped_block = unsafe { networking::route_handler::MetaData::new(self.to_owned()) };
+        let json_metadata_block = match serde_json::to_string(&metadata_wrapped_block) {
+            Ok(json) => json,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return;
+            },
+        };
+
+        for node in validators {
+            let result = networking::client::http_post_request_timeout(
+                node.ip_address,
+                "/v".to_string() + &node.version + "/blockchain/vouch",
+                json_metadata_block.to_string(),
+            ).await;
+
+            println_debug!("{:#?}", result);
+        }
     }
 }

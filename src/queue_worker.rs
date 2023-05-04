@@ -97,6 +97,13 @@ pub fn init() {
                     continue;
                 }
 
+                let vouch = unsafe { CURRENT_PROPOSED_BLOCK.vouch() };
+                // share vouch with other validators
+                
+                rt.spawn(async move {
+                    vouch.broadcast_to_validators(validators).await;
+                });
+
             } else {
                 println_debug!("This node is inactive for the current slot!");
             }

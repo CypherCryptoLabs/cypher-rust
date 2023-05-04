@@ -168,6 +168,7 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let post_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network/node";
     let post_tx_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/tx";
     let post_block_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/propose";
+    let post_block_vouch_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/vouch";
 
     let api_routes: Vec<Route> = vec![
         Route {path: &"/", method: &"GET", handler: get_info},
@@ -175,6 +176,7 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
         Route {path: &post_nodes_path, method: &"POST", handler: post_node},
         Route {path: &post_tx_path, method: &"POST", handler: post_tx},
         Route {path: &post_block_path, method: &"POST", handler: post_block_propose},
+        Route {path: &post_block_vouch_path, method: &"POST", handler: post_block_vouch},
     ];
 
     for route in api_routes.iter() {
@@ -437,5 +439,13 @@ fn post_block_propose(req: Request<Body>) -> Pin<Box<dyn Future<Output = Respons
 }
 
 fn post_block_vouch(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
-    todo!()
+    Box::pin(async move {
+        let body = req.into_body();
+        let bytes = body::to_bytes(body).await.unwrap();
+        let data = String::from_utf8((&*bytes).to_vec());
+
+        println_debug!("{:#?}", data);
+
+        todo!()
+    })
 }
