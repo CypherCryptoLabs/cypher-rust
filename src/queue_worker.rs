@@ -9,6 +9,7 @@ use tokio::runtime::Runtime;
 
 use crate::blockchain::{self, Vouch, Block};
 use crate::networking::node::{self, Node};
+use crate::networking::route_handler;
 
 use super::transaction_queue;
 
@@ -49,6 +50,7 @@ pub fn init() {
                 None => continue,
             };
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
+            let num_validators = validators.len();
             let validator_addresses = validators.iter().map(|node| node.blockchain_address.clone()).collect();
 
             println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
@@ -114,8 +116,27 @@ pub fn init() {
                         .as_millis() as u64)
                 );
 
-                println_debug!("{:#?}", unsafe { &CURRENT_PROPOSED_BLOCK_VOUCHES });
+                unsafe {
+                    CURRENT_PROPOSED_BLOCK_VOUCHES.iter().for_each(|vouch| {
+                        CURRENT_PROPOSED_BLOCK.validators.iter_mut().for_each(|mut block_vouch| {
+                            if block_vouch.address == vouch.address {
+                                block_vouch.pub_key = vouch.pub_key.clone();
+                                block_vouch.signature = vouch.signature.clone();
+                            }
+                        })
+                    });
 
+                    if CURRENT_PROPOSED_BLOCK_VOUCHES.len() <= num_validators / 2 {
+                        continue;
+                    }
+
+                    let metadata_wrapped_block = route_handler::MetaData::new(CURRENT_PROPOSED_BLOCK.clone());
+                    rt.spawn(async move {
+                        metadata_wrapped_block.broadcast("/blockchain/block".to_string()).await;
+                    });
+
+                }
+                
             } else {
                 println_debug!("This node is inactive for the current slot!");
             }
