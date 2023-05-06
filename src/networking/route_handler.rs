@@ -11,9 +11,9 @@ use hyper::{Request, Response, Body, StatusCode, body};
 use std::convert::Infallible;
 use std::pin::Pin;
 use std::time::{SystemTime, UNIX_EPOCH};
-use hex;
-use crate::blockchain::Block;
+use crate::blockchain::{Block, Vouch};
 use crate::networking::node::{LOCAL_BLOCKCHAIN_ADDRESS, NODE_LIST};
+use crate::queue_worker;
 
 use super::super::transaction_queue;
 
@@ -442,10 +442,56 @@ fn post_block_vouch(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<
     Box::pin(async move {
         let body = req.into_body();
         let bytes = body::to_bytes(body).await.unwrap();
-        let data = String::from_utf8((&*bytes).to_vec());
 
-        println_debug!("{:#?}", data);
+        let body = "400 - Malformed Request";
+        let mut response = Response::builder()
+            .header(CONTENT_LENGTH, body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .expect("Failed to construct the response");
 
-        todo!()
+        let data = match String::from_utf8((&*bytes).to_vec()) {
+            Ok(data) => data,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            },
+        };
+
+        let metadata: MetaData<Vouch> = match serde_json::from_str(&data) {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            },
+        };
+        let vouch = metadata.payload;
+
+        let known_vouches = unsafe { queue_worker::CURRENT_PROPOSED_BLOCK_VOUCHES.clone() };
+
+        if known_vouches.iter().all(|known_vouch| {vouch.signature != known_vouch.signature}) &&
+            vouch.is_valid(unsafe { queue_worker::CURRENT_PROPOSED_BLOCK.clone() }) 
+        {
+            unsafe { queue_worker::CURRENT_PROPOSED_BLOCK_VOUCHES.push(vouch) };
+            let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
+            response = Response::builder()
+                .header(CONTENT_LENGTH, new_body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(new_body))
+                .expect("Failed to construct the response");
+
+        } else {
+
+            println_debug!("{} {}",vouch.is_valid(unsafe { queue_worker::CURRENT_PROPOSED_BLOCK.clone() }), known_vouches.iter().all(|known_vouch| {vouch.signature != known_vouch.signature}));
+
+            let new_body: String = unsafe { MetaData::new(response::Broadcast{status: false}).to_string() };
+            response = Response::builder()
+                .header(CONTENT_LENGTH, new_body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(new_body))
+                .expect("Failed to construct the response");
+        }
+        
+        return response;
     })
 }

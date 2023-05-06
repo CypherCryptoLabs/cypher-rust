@@ -7,7 +7,7 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use tokio::runtime::Runtime;
 
-use crate::blockchain::{self, Block};
+use crate::blockchain::{self, Vouch, Block};
 use crate::networking::node::{self, Node};
 
 use super::transaction_queue;
@@ -21,6 +21,8 @@ pub static mut CURRENT_PROPOSED_BLOCK: Block = Block {
     forger_pub_key: String::new(),
     validators: vec![] 
 };
+
+pub static mut CURRENT_PROPOSED_BLOCK_VOUCHES: Vec<Vouch> = vec![];
 
 pub fn init() {
     thread::spawn(|| {
@@ -103,6 +105,16 @@ pub fn init() {
                 rt.spawn(async move {
                     vouch.broadcast_to_validators(validators).await;
                 });
+
+                thread::sleep(Duration::from_millis(
+                    next_voting_slot + 
+                    15000 - 
+                    SystemTime::now().duration_since(UNIX_EPOCH)
+                        .expect("Time went backwards")
+                        .as_millis() as u64)
+                );
+
+                println_debug!("{:#?}", unsafe { &CURRENT_PROPOSED_BLOCK_VOUCHES });
 
             } else {
                 println_debug!("This node is inactive for the current slot!");

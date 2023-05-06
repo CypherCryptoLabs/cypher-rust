@@ -92,7 +92,7 @@ impl Block {
         };
 
         validators.iter().for_each(|address| {
-            temp_block.validators.push(Vouch::new(address));
+            temp_block.validators.push(Vouch::new(address, &String::new()));
         });
 
         let block_json = match serde_json::to_string(&temp_block.clone()) {
@@ -212,7 +212,7 @@ impl Block {
             }
         };
 
-        let mut vouch = Vouch::new(&LOCAL_BLOCKCHAIN_ADDRESS);
+        let mut vouch = Vouch::new(&LOCAL_BLOCKCHAIN_ADDRESS, unsafe { &crypto::PUBLIC_KEY.unwrap().to_string() });
         vouch.signature = crypto::sign_string(&block_json);
 
         return vouch;
@@ -222,15 +222,17 @@ impl Block {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
 
 pub struct Vouch {
-    address: String,
-    signature: String
+    pub address: String,
+    pub signature: String,
+    pub pub_key: String
 }
 
 impl Vouch {
-    pub fn new(address: &String) -> Vouch {
+    pub fn new(address: &String, pub_key: &String) -> Vouch {
         let vouch = Vouch {
             address: address.to_string(),
-            signature: "".to_string()
+            signature: String::new(),
+            pub_key: pub_key.to_string(),
         };
 
         return vouch;
@@ -255,5 +257,27 @@ impl Vouch {
 
             println_debug!("{:#?}", result);
         }
+    }
+
+    pub fn is_valid(&self, block: Block) -> bool {
+        if !block.validators.iter().any(|validator| validator.address == self.address) { 
+            return false;
+        };
+
+        let pub_key = match super::crypto::string_to_pub_key(&self.pub_key) {
+            Some(pub_key) => pub_key,
+            None => {
+                println_debug!("6");
+                return false;
+            }
+        };
+
+        let expected_address = super::crypto::pub_key_to_address(&pub_key);
+
+        if self.address != expected_address {
+            return false;
+        }
+
+        return true;
     }
 }
