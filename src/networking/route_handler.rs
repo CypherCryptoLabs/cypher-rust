@@ -538,6 +538,8 @@ fn post_block(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>>
             return response;
         }
 
+        super::super::db::store_block(&block);
+
         let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
             response = Response::builder()
                 .header(CONTENT_LENGTH, new_body.len() as u64)

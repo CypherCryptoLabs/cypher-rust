@@ -6,6 +6,8 @@ mod crypto;
 mod blockchain;
 mod transaction_queue;
 mod queue_worker;
+mod db;
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
