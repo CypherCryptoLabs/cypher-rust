@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 
 use crate::blockchain::{self, Vouch, Block};
 use crate::networking::node::{self, Node};
-use crate::networking::route_handler;
+use crate::networking::{route_handler, self};
 
 use super::transaction_queue;
 
@@ -52,6 +52,8 @@ pub fn init() {
             let validators = select_validators(node_list_copy, forger.blockchain_address.clone());
             let num_validators = validators.len();
             let validator_addresses = validators.iter().map(|node| node.blockchain_address.clone()).collect();
+
+            unsafe { networking::CURRENT_FORGER =  forger.clone() };
 
             println_debug!("Forger: {:#?}\nValidators:{:#?}", forger, validators);
             unsafe { 

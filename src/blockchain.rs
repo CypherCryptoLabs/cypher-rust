@@ -154,6 +154,11 @@ impl Block {
         let mut block_cpy = self.clone();
         block_cpy.forger_signature = "".to_string();
 
+        block_cpy.validators.iter_mut().for_each(|mut vouch| {
+            vouch.pub_key = String::new();
+            vouch.signature = String::new();
+        });
+
         let block_json = match serde_json::to_string(&block_cpy.clone()) {
             Ok(json) => {
                 json
@@ -216,6 +221,23 @@ impl Block {
         vouch.signature = crypto::sign_string(&block_json);
 
         return vouch;
+    }
+
+    pub fn is_vouched(&self) -> bool {
+        let vouches = &self.validators;
+        let mut valid_vouches = 0;
+
+        vouches.iter().for_each(|vouch| {
+            if vouch.is_valid(self.clone()) {
+                valid_vouches += 1;
+            }
+        });
+
+        if valid_vouches > vouches.len() / 2 {
+            return true;
+        }
+
+        return false;
     }
 }
 

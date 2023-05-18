@@ -7,11 +7,18 @@ pub mod client;
 pub mod node;
 
 use hyper::{service::{ make_service_fn, service_fn}, Server};
+use node::Node;
 use std::{convert::Infallible, io::{Error, ErrorKind}};
 use tokio;
 
 pub static mut CURRENT_FORGER_ADDRESS: String = String::new();
 pub static mut CURRENT_VALIDATORS: Vec<node::Node> = vec![];
+pub static mut CURRENT_FORGER: node::Node = Node{
+    ip_address: String::new(),
+    blockchain_address: String::new(),
+    registration_timestamp: u64::MAX,
+    version: String::new()
+};
 
 #[tokio::main]
 pub async fn start_http_server() {

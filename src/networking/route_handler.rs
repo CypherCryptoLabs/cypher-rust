@@ -101,6 +101,7 @@ impl<T: serde::Serialize+Clone+std::fmt::Debug+ for<'a> serde::Deserialize<'a>> 
 
         println_debug!("{}", self_str);
         println_debug!("{}", n_random_peers);
+        println_debug!("{}", endpoint);
 
         let local_node = NODE_LIST.iter().find(|s| s.blockchain_address.eq(&LOCAL_BLOCKCHAIN_ADDRESS.to_string())).unwrap();
         notified_random_peers.push(local_node.to_owned());
@@ -167,16 +168,18 @@ pub async fn handler(req: Request<Body>) -> Result<Response<Body>, Infallible> {
     let get_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network";
     let post_nodes_path = "/v".to_owned() + _NODE_VERSION + "/network/node";
     let post_tx_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/tx";
-    let post_block_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/propose";
+    let post_block_propose_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/propose";
     let post_block_vouch_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/vouch";
+    let post_block_path = "/v".to_owned() + _NODE_VERSION + "/blockchain/block";
 
     let api_routes: Vec<Route> = vec![
         Route {path: &"/", method: &"GET", handler: get_info},
         Route {path: &get_nodes_path, method: &"GET", handler: get_nodes},
         Route {path: &post_nodes_path, method: &"POST", handler: post_node},
         Route {path: &post_tx_path, method: &"POST", handler: post_tx},
-        Route {path: &post_block_path, method: &"POST", handler: post_block_propose},
+        Route {path: &post_block_propose_path, method: &"POST", handler: post_block_propose},
         Route {path: &post_block_vouch_path, method: &"POST", handler: post_block_vouch},
+        Route {path: &post_block_path, method: &"POST", handler: post_block},
     ];
 
     for route in api_routes.iter() {
@@ -493,5 +496,56 @@ fn post_block_vouch(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<
         }
         
         return response;
+    })
+}
+
+fn post_block(req: Request<Body>) -> Pin<Box<dyn Future<Output = Response<Body>> + Send>> {
+    Box::pin(async move {
+        let body = req.into_body();
+        let bytes = body::to_bytes(body).await.unwrap();
+
+        let body = "400 - Malformed Request";
+        let mut response = Response::builder()
+            .header(CONTENT_LENGTH, body.len() as u64)
+            .header(CONTENT_TYPE, "text/plain")
+            .body(Body::from(body))
+            .expect("Failed to construct the response");
+
+        let data = match String::from_utf8((&*bytes).to_vec()) {
+            Ok(data) => data,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            },
+        };
+
+        let metadata: MetaData<Block> = match serde_json::from_str(&data) {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                println_debug!("{:#?}", e);
+                return response;
+            },
+        };
+
+        let block = metadata.payload;
+        if !block.is_valid(
+            unsafe { &super::CURRENT_FORGER }, 
+            unsafe { 
+                super::CURRENT_VALIDATORS.iter()
+                .map(|node| {node.blockchain_address.clone()}).collect()
+            }
+        ) || !block.is_vouched() {
+            return response;
+        }
+
+        let new_body: String = unsafe { MetaData::new(response::Broadcast{status: true}).to_string() };
+            response = Response::builder()
+                .header(CONTENT_LENGTH, new_body.len() as u64)
+                .header(CONTENT_TYPE, "text/plain")
+                .body(Body::from(new_body))
+                .expect("Failed to construct the response");
+
+        return response;
+        
     })
 }
